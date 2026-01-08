@@ -35,5 +35,8 @@
   "homepage": "https://github.com/alex-p24-wq/E-Cardamom_connect#readme",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "sharp": "^0.34.5"
   }
 }

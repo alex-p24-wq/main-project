@@ -225,6 +225,17 @@ export const adminGetSummary = async () => {
   catch (error) { const msg = error?.response?.data?.message || error?.message || 'Failed to fetch admin summary'; throw { message: msg }; }
 };
 
+export const adminGetHubStockSummary = async () => {
+  try { 
+    const res = await api.get('/admin/hub-stock-summary'); 
+    return res.data; 
+  }
+  catch (error) { 
+    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch hub stock summary'; 
+    throw { message: msg }; 
+  }
+};
+
 export const adminListUsers = async (params = {}) => {
   try { const res = await api.get('/admin/users', { params }); return res.data; }
   catch (error) { const msg = error?.response?.data?.message || error?.message || 'Failed to fetch users'; throw { message: msg }; }
@@ -302,6 +313,16 @@ export const getFarmerProducts = async () => {
     return res.data;
   } catch (error) {
     const msg = error?.response?.data?.message || error?.message || 'Failed to fetch farmer products';
+    throw { message: msg };
+  }
+};
+
+export const getCardamomPrices = async () => {
+  try {
+    const res = await api.get('/farmer/cardamom-prices');
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch cardamom prices';
     throw { message: msg };
   }
 };

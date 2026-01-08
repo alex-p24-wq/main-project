@@ -5,6 +5,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { validateFarmerProductImage } from "../utils/imageValidation.js";
+import { getLatestCardamomPrice } from "../utils/cardamomPriceScraper.js";
 
 const router = express.Router();
 
@@ -42,6 +44,25 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get latest cardamom prices
+router.get('/cardamom-prices', requireAuth, requireRole('farmer'), async (req, res) => {
+  try {
+    const prices = await getLatestCardamomPrice();
+    
+    if (!prices) {
+      return res.status(500).json({ message: 'Failed to fetch cardamom prices' });
+    }
+    
+    res.json({
+      success: true,
+      data: prices
+    });
+  } catch (error) {
+    console.error('Get cardamom prices error:', error);
+    res.status(500).json({ message: 'Server error while fetching cardamom prices' });
   }
 });
 
@@ -95,6 +116,8 @@ router.post('/products', requireAuth, requireRole('farmer'), upload.single('imag
     // Build image URL if file uploaded
     let imageUrl = undefined;
     if (req.file) {
+      // Skip all validation - allow any image file
+      
       // Build absolute URL so frontend can load from different origin
       const host = req.get('host');
       const protocol = req.protocol;
@@ -131,6 +154,15 @@ router.post('/products', requireAuth, requireRole('farmer'), upload.single('imag
 
     res.status(201).json(product);
   } catch (error) {
+    // Clean up any uploaded file if there was an error
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkErr) {
+        console.error('Error cleaning up uploaded file after error:', unlinkErr);
+      }
+    }
+    
     console.error('Create product error:', error);
     res.status(500).json({ message: 'Server error' });
   }

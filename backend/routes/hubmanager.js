@@ -162,28 +162,37 @@ router.get('/bulk-products', requireAuth, requireRole('hub'), async (req, res) =
     const { default: Product } = await import('../models/Product.js');
     const { default: Hub } = await import('../models/Hub.js');
     
-    // Get hub name from user's profileData or query parameter
-    const hubName = req.query.hubName || req.user.profileData?.assignedHub;
-    
-    // Find hub by name to get hubId
-    let hubId = null;
-    if (hubName) {
-      const hub = await Hub.findOne({ name: hubName });
-      hubId = hub?._id;
-    }
-    
     // Build query for bulk products
     let query = {
       type: 'Bulk'
     };
     
-    // Filter by hub - match either hubId or nearestHub name
-    if (hubId) {
-      query.hubId = hubId;
-    } else if (hubName) {
-      query.nearestHub = hubName;
+    // Only filter by hub if specifically requested (for individual hub manager views)
+    // For general Hub Network view, don't filter by hub
+    if ((req.query.hubName || req.query.forHub) && !req.query.forNetwork) {
+      // Get hub name from user's profileData or query parameter
+      const hubName = req.query.hubName || req.user.profileData?.assignedHub;
+      
+      // Find hub by name to get hubId
+      let hubId = null;
+      if (hubName) {
+        const hub = await Hub.findOne({ name: hubName });
+        hubId = hub?._id;
+      }
+      
+      // Filter by hub - match either hubId or nearestHub name
+      if (hubId) {
+        query.hubId = hubId;
+      } else if (hubName) {
+        query.nearestHub = hubName;
+      }
     }
-    // If no hub association, show all bulk products (admin-level access)
+    // If no hub filter requested or forNetwork=true, show all bulk products for network view
+    
+    // Filter by status if provided
+    if (req.query.status) {
+      query.bulkProductStatus = req.query.status;
+    }
     
     if (search) {
       query.$and = query.$and || [];

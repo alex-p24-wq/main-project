@@ -50,10 +50,14 @@ export default function HubList({ user }) {
     const loadBulkProducts = async () => {
       try {
         const response = await api.get('/hubmanager/bulk-products', {
-          params: { limit: 1000 } // Get all bulk products
+          params: { limit: 1000, status: 'accepted', forNetwork: true } // Get all accepted bulk products for network view
         });
         if (response.data && response.data.items) {
-          setBulkProducts(response.data.items);
+          // Filter to only show accepted bulk products
+          const acceptedProducts = response.data.items.filter(product => 
+            product.bulkProductStatus === 'accepted'
+          );
+          setBulkProducts(acceptedProducts);
         }
       } catch (error) {
         console.error('Failed to load bulk products:', error);
@@ -117,12 +121,18 @@ export default function HubList({ user }) {
 
   // Get bulk products for a specific hub
   const getBulkProductsForHub = (hubName) => {
-    return bulkProducts.filter(product => product.nearestHub === hubName);
+    return bulkProducts.filter(product => 
+      product.nearestHub === hubName && 
+      product.bulkProductStatus === 'accepted'
+    );
   };
 
   // Get bulk products for a specific district
   const getBulkProductsForDistrict = (district) => {
-    return bulkProducts.filter(product => product.district === district);
+    return bulkProducts.filter(product => 
+      product.district === district && 
+      product.bulkProductStatus === 'accepted'
+    );
   };
 
   // Get unique states, districts and hub types for filters

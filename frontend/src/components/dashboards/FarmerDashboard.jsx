@@ -8,6 +8,7 @@ import FarmerOverview from "./farmer/FarmerOverview";
 import FarmerProfile from "./farmer/FarmerProfile";
 import ProductManager from "./farmer/ProductManager";
 import CardamomGrading from "./farmer/CardamomGrading";
+import CardamomPriceTracker from "./farmer/CardamomPriceTracker";
 import DiseasePredictor from "./farmer/DiseasePredictor";
 import ConnectAgriCare from "./farmer/ConnectAgriCare";
 import FeedbackForm from "./shared/FeedbackForm";
@@ -20,6 +21,7 @@ export default function FarmerDashboard({ user }) {
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "products", label: "Add Product", icon: "🧺" },
     { id: "grading", label: "Cardamom Grading", icon: "⭐" },
+    { id: "prices", label: "Market Prices", icon: "📈" },
     { id: "predictor", label: "Disease Predictor", icon: "🧪" },
     { id: "agricare", label: "Connect AgriCare", icon: "🤝" },
     { id: "feedback", label: "Feedback", icon: "💬" },
@@ -34,6 +36,8 @@ export default function FarmerDashboard({ user }) {
         return <ProductManager />;
       case "grading":
         return <CardamomGrading />;
+      case "prices":
+        return <CardamomPriceTracker />;
       case "predictor":
         return <DiseasePredictor />;
       case "agricare":

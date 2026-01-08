@@ -8,6 +8,7 @@ import ProductTypeModal from "../../modals/ProductTypeModal";
 import BulkProductManager from "./BulkProductManager";
 import "../../../css/CardamomComponents.css";
 import "../../../css/FarmerComponents.css";
+import { validateFarmerProductImage } from "../../../utils/imageValidation";
 
 // Manage products to sell (persisted in database)
 export default function ProductManager() {
@@ -87,14 +88,65 @@ export default function ProductManager() {
   };
 
   const handleFileChange = (e) => {
-    const f = e.target.files?.[0];
-    setFile(f || null);
-    if (f) {
-      const url = URL.createObjectURL(f);
-      setPreviewUrl(url);
-    } else {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setFile(null);
       setPreviewUrl("");
+      return;
     }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size must be less than 5MB");
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file');
+      return;
+    }
+
+    // Validate that the image is an original captured photo, not AI-generated or cartoon
+    validateFarmerProductImage(file).then(validationResult => {
+      if (!validationResult.isValid) {
+        setError(validationResult.error || 'Please upload an original captured photo, not an AI-generated or cartoon image.');
+        return;
+      }
+      
+      // Show warnings if any
+      if (validationResult.warnings && validationResult.warnings.length > 0) {
+        // Show warnings to the user
+        validationResult.warnings.forEach(warning => {
+          addNotification({
+            type: 'warning',
+            title: 'Image Warning',
+            message: warning,
+            icon: '⚠️'
+          });
+        });
+      }
+
+      setFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }).catch(err => {
+      console.error('Image validation error:', err);
+      // Still allow the image if validation fails (fallback to server-side validation)
+      setFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const resetForm = () => {

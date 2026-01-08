@@ -2,6 +2,7 @@ import express from "express";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
+import Hub from "../models/Hub.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import Feedback from "../models/Feedback.js";
 
@@ -332,6 +333,103 @@ router.delete('/orders/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete order error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Hub Stock Summary: Get bulk product stock summary by hub and grade
+router.get('/hub-stock-summary', async (req, res) => {
+  try {
+    // Get all hubs
+    const hubs = await Hub.find({}).sort({ district: 1, name: 1 });
+    
+    // Get all bulk products that are accepted
+    const bulkProducts = await Product.find({
+      type: 'Bulk',
+      bulkProductStatus: 'accepted'
+    }).populate('user', 'username role');
+    
+    // Group products by hub
+    const productsByHub = {};
+    bulkProducts.forEach(product => {
+      const hubName = product.nearestHub;
+      if (!hubName) return; // Skip products without a hub assignment
+      if (!productsByHub[hubName]) {
+        productsByHub[hubName] = [];
+      }
+      productsByHub[hubName].push(product);
+    });
+    
+    // Calculate summary for each hub
+    const hubSummaries = [];
+    
+    for (const hub of hubs) {
+      const hubProducts = productsByHub[hub.name] || [];
+      
+      // Calculate grade-wise totals
+      const gradeTotals = {
+        Premium: { totalStock: 0, totalPrice: 0, count: 0 },
+        Organic: { totalStock: 0, totalPrice: 0, count: 0 },
+        Regular: { totalStock: 0, totalPrice: 0, count: 0 }
+      };
+      
+      let totalStock = 0;
+      let totalPrice = 0;
+      
+      hubProducts.forEach(product => {
+        const grade = product.grade;
+        if (grade && gradeTotals[grade]) {
+          gradeTotals[grade].totalStock += product.stock;
+          gradeTotals[grade].totalPrice += product.price * product.stock;
+          gradeTotals[grade].count += 1;
+        }
+        totalStock += product.stock;
+        totalPrice += product.price * product.stock;
+      });
+      
+      hubSummaries.push({
+        hubId: hub._id,
+        hubName: hub.name,
+        district: hub.district,
+        state: hub.state,
+        totalStock,
+        totalPrice,
+        productCount: hubProducts.length,
+        gradeBreakdown: gradeTotals
+      });
+    }
+    
+    // Also calculate overall totals
+    const overallTotals = {
+      totalStock: hubSummaries.reduce((sum, h) => sum + h.totalStock, 0),
+      totalPrice: hubSummaries.reduce((sum, h) => sum + h.totalPrice, 0),
+      totalProducts: hubSummaries.reduce((sum, h) => sum + h.productCount, 0),
+      totalHubs: hubSummaries.filter(h => h.productCount > 0).length, // Only count hubs with products
+      gradeBreakdown: {
+        Premium: {
+          totalStock: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Premium.totalStock, 0),
+          totalPrice: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Premium.totalPrice, 0),
+          count: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Premium.count, 0)
+        },
+        Organic: {
+          totalStock: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Organic.totalStock, 0),
+          totalPrice: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Organic.totalPrice, 0),
+          count: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Organic.count, 0)
+        },
+        Regular: {
+          totalStock: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Regular.totalStock, 0),
+          totalPrice: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Regular.totalPrice, 0),
+          count: hubSummaries.reduce((sum, h) => sum + h.gradeBreakdown.Regular.count, 0)
+        }
+      }
+    };
+    
+    res.json({
+      hubs: hubSummaries,
+      overall: overallTotals
+    });
+  } catch (error) {
+    console.error('Hub stock summary error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

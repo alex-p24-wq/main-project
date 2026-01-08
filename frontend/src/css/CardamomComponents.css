@@ -505,3 +505,290 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Hub Stock Summary Styles */
+.hub-stock-overview {
+  margin-bottom: 32px;
+}
+
+.overview-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.grade-breakdown-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.grade-breakdown-section h4 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: #1e293b;
+  font-size: 18px;
+}
+
+.grade-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.grade-stat-card {
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid;
+}
+
+.grade-header {
+  margin-bottom: 12px;
+}
+
+.grade-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.grade-stats {
+  display: grid;
+  gap: 8px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.stat-item .stat-label {
+  font-weight: 500;
+  color: #475569;
+}
+
+.stat-item .stat-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.hub-details-section h4 {
+  color: #1e293b;
+  font-size: 18px;
+  margin: 32px 0 16px 0;
+}
+
+.hub-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hub-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.hub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hub-header h5 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.district-tag {
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hub-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hub-main-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.hub-grade-breakdown h6 {
+  margin: 0 0 8px 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.hub-grade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.hub-grade-item {
+  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid;
+}
+
+.grade-name-small {
+  font-weight: 600;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.grade-stats-small {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+/* PDF Report Styles */
+@media print {
+  #hub-stock-report {
+    overflow: visible !important;
+  }
+}
+
+/* Hide elements that shouldn't appear in PDF */
+.pdf-hidden {
+  display: none !important;
+}
+
+/* Ensure content is properly formatted for PDF */
+#hub-stock-report {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#hub-stock-report .hub-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+#hub-stock-report .grade-stat-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Ensure readability in PDF */
+#hub-stock-report .stat-value {
+  font-size: 14px;
+}
+
+#hub-stock-report .hub-header h5 {
+  font-size: 14px;
+}
+
+#hub-stock-report .grade-name {
+  font-size: 13px;
+}
+
+/* Official Report Styles */
+.official-report-container {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  border: 1px solid #ccc;
+  background-color: white;
+}
+
+.official-report-header {
+  text-align: center;
+  border-bottom: 2px solid black;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.official-report-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+  color: black;
+}
+
+.official-report-subtitle {
+  font-size: 14px;
+  color: black;
+  margin: 5px 0 0 0;
+}
+
+.official-report-section {
+  margin-bottom: 20px;
+}
+
+.official-report-section-title {
+  font-size: 18px;
+  font-weight: bold;
+  border-bottom: 1px solid black;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  color: black;
+}
+
+.official-report-item {
+  margin: 8px 0;
+  padding-left: 10px;
+  color: black;
+}
+
+.official-report-value {
+  font-weight: bold;
+  color: black;
+}
+
+.official-report-footer {
+  margin-top: 30px;
+  text-align: center;
+  font-style: italic;
+  color: black;
+  border-top: 1px solid black;
+  padding-top: 10px;
+  font-size: 12px;
+}

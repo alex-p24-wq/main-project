@@ -22,9 +22,10 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'http://localhost:5174', // Alternative local port
       'http://localhost:5175', // Alternative local port
       'http://localhost:5176', // Alternative local port
+      'http://localhost:5177', // Alternative local port
       'http://localhost:3000'
     ]
-  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'];
+  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177'];
 
 const corsOptions = {
   origin: (origin, callback) => {

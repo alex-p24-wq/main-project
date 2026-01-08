@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import api from '../../../services/api';
-import { indianStatesDistricts } from '../../../data/indianStatesDistricts';
-import '../../../css/FarmerComponents.css';
+import api from "../../../services/api";
+import { indianStatesDistricts } from "../../../data/indianStatesDistricts";
+import "../../../css/FarmerComponents.css";
+import { validateFarmerProductImage } from "../../../utils/imageValidation";
 
 export default function BulkProductManager() {
   const [formData, setFormData] = useState({
@@ -85,6 +86,7 @@ export default function BulkProductManager() {
         return;
       }
 
+      // Skip validation - just set the image file directly
       setImageFile(file);
       
       // Create preview

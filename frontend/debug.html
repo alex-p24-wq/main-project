@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Page</title>
+</head>
+<body>
+    <h1>Debug Information</h1>
+    <p>If you can see this, the server is working.</p>
+    <p>Checking for issues...</p>
+    
+    <script>
+        // Debug script to check for common issues
+        console.log('Debug script loaded');
+        
+        // Check if required elements exist
+        window.addEventListener('load', function() {
+            console.log('Window loaded');
+            
+            // Check if root element exists
+            const rootElement = document.getElementById('root');
+            console.log('Root element exists:', !!rootElement);
+            
+            // Check if there are any errors
+            window.addEventListener('error', function(e) {
+                console.error('JavaScript error:', e.error);
+            });
+            
+            // Check if there are unhandled rejections
+            window.addEventListener('unhandledrejection', function(e) {
+                console.error('Unhandled promise rejection:', e.reason);
+            });
+        });
+    </script>
+</body>
+</html>

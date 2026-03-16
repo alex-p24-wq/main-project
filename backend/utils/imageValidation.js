@@ -3,6 +3,7 @@
  */
 import fs from 'fs';
 import exif from 'exif-reader';
+import { Jimp } from 'jimp';
 
 /**
  * Simple heuristic to detect if an image contains cardamom pods
@@ -11,35 +12,21 @@ import exif from 'exif-reader';
  */
 export const detectCardamomImage = async (filePath) => {
   try {
-    // Dynamically load sharp to prevent Vercel startup crashes if binary is missing
-    let sharp;
-    try {
-      sharp = (await import('sharp')).default;
-    } catch (e) {
-      console.warn("Sharp module not found, skipping image analysis.");
-      return { isCardamom: false, confidence: 0.1 };
-    }
-
+    // Read the image using Jimp
+    const image = await Jimp.read(filePath);
+    
     // Resize image for faster processing
-    const resizedBuffer = await sharp(filePath)
-      .resize(256, 256, { fit: 'inside' })
-      .toBuffer();
+    image.resize({ w: 256, h: undefined }); // proportional height
     
-    // Get raw pixel data
-    const { data, info } = await sharp(resizedBuffer)
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-    
-    const { width, height, channels } = info;
     let greenPixels = 0;
     let brownPixels = 0;
     let totalPixels = 0;
     
     // Analyze pixels
-    for (let i = 0; i < data.length; i += channels) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
+    image.scan((x, y, idx) => {
+      const r = image.bitmap.data[idx + 0];
+      const g = image.bitmap.data[idx + 1];
+      const b = image.bitmap.data[idx + 2];
       
       totalPixels++;
       
@@ -52,7 +39,7 @@ export const detectCardamomImage = async (filePath) => {
       if (r > g && r > b && r > 100 && g > 80 && b < 100) {
         brownPixels++;
       }
-    }
+    });
     
     // Calculate percentages
     const greenPercentage = (greenPixels / totalPixels) * 100;
@@ -65,6 +52,7 @@ export const detectCardamomImage = async (filePath) => {
     return { isCardamom, confidence };
   } catch (error) {
     // If analysis fails, assume it's not cardamom
+    console.error("Jimp Image Analysis Error:", error);
     return { isCardamom: false, confidence: 0.1 };
   }
 };

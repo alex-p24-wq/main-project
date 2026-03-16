@@ -43,38 +43,38 @@ api.interceptors.response.use(
   async (error) => {
     const status = error?.response?.status;
     const config = error?.config;
-    
+
     // Only trigger auto-logout for 401/403 if:
     // 1. The request included an Authorization header (meaning it was an authenticated request)
     // 2. We're not already on the login page
     // 3. The error is specifically about authentication (not a general server error)
-    if ((status === 401 || status === 403) && 
-        config?.headers?.Authorization && 
-        !/\/login/i.test(window.location.pathname)) {
-      
+    if ((status === 401 || status === 403) &&
+      config?.headers?.Authorization &&
+      !/\/login/i.test(window.location.pathname)) {
+
       // Check if this is a real auth error vs server/network issue
       const errorMessage = error?.response?.data?.message?.toLowerCase() || '';
-      const isAuthError = errorMessage.includes('token') || 
-                         errorMessage.includes('unauthorized') || 
-                         errorMessage.includes('expired') ||
-                         status === 401; // 401 is always auth-related
-      
+      const isAuthError = errorMessage.includes('token') ||
+        errorMessage.includes('unauthorized') ||
+        errorMessage.includes('expired') ||
+        status === 401; // 401 is always auth-related
+
       // Don't auto-logout on role-based 403 errors (insufficient role)
       const isRoleError = status === 403 && errorMessage.includes('insufficient role');
-      
+
       if (isAuthError && !isRoleError) {
         try {
           const { logout } = await import('../services/auth');
           await logout();
-        } catch (_) {}
-        
+        } catch (_) { }
+
         // Redirect to login with intended path
         try {
           const current = window.location.pathname + window.location.search;
           const redirect = encodeURIComponent(current);
           window.location.replace(`/login?redirect=${redirect}`);
-        } catch (_) {}
-        
+        } catch (_) { }
+
         // Soft signal to callers that auth is gone
         error.isAuthError = true;
       }
@@ -226,13 +226,13 @@ export const adminGetSummary = async () => {
 };
 
 export const adminGetHubStockSummary = async () => {
-  try { 
-    const res = await api.get('/admin/hub-stock-summary'); 
-    return res.data; 
+  try {
+    const res = await api.get('/admin/hub-stock-summary');
+    return res.data;
   }
-  catch (error) { 
-    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch hub stock summary'; 
-    throw { message: msg }; 
+  catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch hub stock summary';
+    throw { message: msg };
   }
 };
 
@@ -481,6 +481,36 @@ export const getAgricareFarmers = async (params = {}) => {
   }
 };
 
+export const createAgricareOrder = async (data) => {
+  try {
+    const res = await api.post('/agricare-orders', data);
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to create AgriCare order';
+    throw { message: msg };
+  }
+};
+
+export const getFarmerAgricareOrders = async (params = {}) => {
+  try {
+    const res = await api.get('/agricare-orders', { params });
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch farmer AgriCare orders';
+    throw { message: msg };
+  }
+};
+
+export const getAgricareProviderOrders = async (params = {}) => {
+  try {
+    const res = await api.get('/agricare-orders/provider', { params });
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch AgriCare provider orders';
+    throw { message: msg };
+  }
+};
+
 // Payment services
 export const createPaymentOrder = async (orderId) => {
   try {
@@ -498,6 +528,23 @@ export const verifyPayment = async (paymentData) => {
     return res.data;
   } catch (error) {
     const msg = error?.response?.data?.message || error?.message || 'Payment verification failed';
+    throw { message: msg };
+  }
+};
+
+export const verifyAgricarePayment = async (paymentData) => {
+  try {
+    const orderId = paymentData.orderId;
+    const paymentPayload = {
+      razorpay_order_id: paymentData.razorpay_order_id,
+      razorpay_payment_id: paymentData.razorpay_payment_id,
+      razorpay_signature: paymentData.razorpay_signature
+    };
+
+    const res = await api.post(`/agricare-orders/${orderId}/verify-payment`, paymentPayload);
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'AgriCare payment verification failed';
     throw { message: msg };
   }
 };
@@ -706,6 +753,37 @@ export const getCurrentUser = async () => {
     return res.data;
   } catch (error) {
     const msg = error?.response?.data?.message || error?.message || 'Failed to get current user';
+    throw { message: msg };
+  }
+};
+
+// Hub Request services (New Flow)
+export const getHubIncomingRequests = async () => {
+  try {
+    const res = await api.get('/hub-requests/my-requests');
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to fetch hub requests';
+    throw { message: msg };
+  }
+};
+
+export const acceptHubRequest = async (requestId) => {
+  try {
+    const res = await api.post(`/hub-requests/${requestId}/accept`);
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to accept hub request';
+    throw { message: msg };
+  }
+};
+
+export const rejectHubRequest = async (requestId) => {
+  try {
+    const res = await api.post(`/hub-requests/${requestId}/reject`);
+    return res.data;
+  } catch (error) {
+    const msg = error?.response?.data?.message || error?.message || 'Failed to reject hub request';
     throw { message: msg };
   }
 };

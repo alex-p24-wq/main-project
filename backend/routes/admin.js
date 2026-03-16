@@ -14,12 +14,16 @@ router.use(requireAuth, requireRole('admin'));
 // Health / summary
 router.get('/', async (_req, res) => {
   try {
-    const [users, products, orders] = await Promise.all([
+    const [users, products, orders, revenueResult] = await Promise.all([
       User.countDocuments({}),
       Product.countDocuments({}),
       Order.countDocuments({}),
+      Order.aggregate([
+        { $group: { _id: null, totalProfit: { $sum: "$platformFee" } } }
+      ])
     ]);
-    res.json({ message: 'Admin routes working', stats: { users, products, orders } });
+    const revenue = revenueResult[0]?.totalProfit || 0;
+    res.json({ message: 'Admin routes working', stats: { users, products, orders, revenue } });
   } catch (error) {
     console.error('Admin root error:', error);
     res.status(500).json({ message: 'Server error' });

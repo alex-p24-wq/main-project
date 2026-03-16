@@ -99,97 +99,116 @@ export default function HubStockSummary() {
       // Create a new PDF instance
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // Add title
-      pdf.setFontSize(20);
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Hub Stock Summary Report', 105, 20, { align: 'center' });
-      
+      // Set basic font
       pdf.setFontSize(12);
-      pdf.setFont(undefined, 'normal');
-      const currentDate = new Date().toLocaleDateString();
-      pdf.text(`Generated on: ${currentDate}`, 15, 35);
       
-      // Add a horizontal line
-      pdf.setDrawColor(0, 0, 0);
-      pdf.line(15, 40, 195, 40);
+      // Add company header
+      pdf.setFont(undefined, 'bold');
+      pdf.setFontSize(16);
+      pdf.text('E-Cardamom Connect', 105, 20, { align: 'center' });
+      
+      // Add report title
+      pdf.setFontSize(18);
+      pdf.text('Hub Stock Summary Report', 105, 30, { align: 'center' });
+      
+      // Add generation date
+      const currentDate = new Date().toLocaleDateString();
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`Generated on: ${currentDate}`, 15, 40);
+      
+      // Add horizontal line
+      pdf.line(15, 45, 195, 45);
+      
+      let yPos = 55;
       
       // Add overall statistics
-      pdf.setFontSize(16);
+      pdf.setFontSize(14);
       pdf.setFont(undefined, 'bold');
-      pdf.text('Overall Statistics', 15, 55);
+      pdf.text('Overall Summary', 15, yPos);
       
-      pdf.setFontSize(12);
-      pdf.setFont(undefined, 'normal');
+      yPos += 8;
       
-      let yPos = 65;
       if (hubData && hubData.overall) {
         const overall = hubData.overall;
-        pdf.text(`Total Value: ₹${overall.totalPrice.toLocaleString()}`, 20, yPos);
+        
+        pdf.setFontSize(11);
+        pdf.setFont(undefined, 'normal');
+        
+        pdf.text(`• Total Value: ₹${overall.totalPrice.toLocaleString()}`, 15, yPos);
+        yPos += 6;
+        pdf.text(`• Total Stock: ${overall.totalStock.toLocaleString()} kg`, 15, yPos);
+        yPos += 6;
+        pdf.text(`• Total Products: ${overall.totalProducts}`, 15, yPos);
+        yPos += 6;
+        pdf.text(`• Total Hubs: ${overall.totalHubs}`, 15, yPos);
         yPos += 10;
-        pdf.text(`Total Stock: ${overall.totalStock.toLocaleString()} kg`, 20, yPos);
-        yPos += 10;
-        pdf.text(`Total Products: ${overall.totalProducts}`, 20, yPos);
-        yPos += 10;
-        pdf.text(`Total Hubs: ${overall.totalHubs}`, 20, yPos);
-        yPos += 15;
       }
       
       // Add grade breakdown
-      pdf.setFontSize(16);
+      pdf.setFontSize(14);
       pdf.setFont(undefined, 'bold');
       pdf.text('Grade Breakdown', 15, yPos);
       
-      pdf.setFontSize(12);
-      pdf.setFont(undefined, 'normal');
-      yPos += 10;
+      yPos += 8;
       
       if (hubData && hubData.overall && hubData.overall.gradeBreakdown) {
         const gradeBreakdown = hubData.overall.gradeBreakdown;
         
+        pdf.setFontSize(11);
+        pdf.setFont(undefined, 'normal');
+        
         for (const [grade, data] of Object.entries(gradeBreakdown)) {
-          pdf.text(`${grade}:`, 20, yPos);
-          pdf.text(`  • Stock: ${data.totalStock.toLocaleString()} kg`, 20, yPos + 7);
-          pdf.text(`  • Value: ₹${data.totalPrice.toLocaleString()}`, 20, yPos + 14);
-          pdf.text(`  • Products: ${data.count}`, 20, yPos + 21);
-          yPos += 30;
+          pdf.text(`${grade}:`, 15, yPos);
+          yPos += 5;
+          pdf.text(`  - Stock: ${data.totalStock.toLocaleString()} kg`, 15, yPos);
+          yPos += 5;
+          pdf.text(`  - Value: ₹${data.totalPrice.toLocaleString()}`, 15, yPos);
+          yPos += 5;
+          pdf.text(`  - Products: ${data.count}`, 15, yPos);
+          yPos += 7;
         }
       }
       
       // Add hub details
-      pdf.setFontSize(16);
+      pdf.setFontSize(14);
       pdf.setFont(undefined, 'bold');
       pdf.text('Hub Details', 15, yPos);
       
-      pdf.setFontSize(12);
-      pdf.setFont(undefined, 'normal');
-      yPos += 10;
+      yPos += 8;
       
       if (hubData && hubData.hubs) {
         for (const hub of hubData.hubs) {
           if (hub.productCount > 0) { // Only show hubs with products
-            // Hub name and location
+            pdf.setFontSize(12);
             pdf.setFont(undefined, 'bold');
-            pdf.text(`${hub.hubName} (${hub.district}, ${hub.state})`, 20, yPos);
+            pdf.text(`${hub.hubName}`, 15, yPos);
+            
+            pdf.setFontSize(10);
             pdf.setFont(undefined, 'normal');
+            pdf.text(`${hub.district}, ${hub.state}`, 15, yPos + 5);
             
-            yPos += 7;
+            yPos += 10;
             
-            // Hub stats
-            pdf.text(`  • Total Stock: ${hub.totalStock.toLocaleString()} kg`, 20, yPos);
-            yPos += 7;
-            pdf.text(`  • Total Value: ₹${hub.totalPrice.toLocaleString()}`, 20, yPos);
-            yPos += 7;
-            pdf.text(`  • Products: ${hub.productCount}`, 20, yPos);
-            yPos += 7;
+            pdf.text(`• Total Stock: ${hub.totalStock.toLocaleString()} kg`, 15, yPos);
+            yPos += 5;
+            pdf.text(`• Total Value: ₹${hub.totalPrice.toLocaleString()}`, 15, yPos);
+            yPos += 5;
+            pdf.text(`• Products: ${hub.productCount}`, 15, yPos);
+            yPos += 8;
             
             // Grade breakdown for this hub
-            pdf.text('  Grade Breakdown:', 20, yPos);
-            yPos += 7;
+            pdf.setFontSize(11);
+            pdf.setFont(undefined, 'bold');
+            pdf.text('Grade Breakdown:', 15, yPos);
+            
+            yPos += 6;
             
             for (const [grade, data] of Object.entries(hub.gradeBreakdown)) {
               if (data.count > 0) {
-                pdf.text(`    - ${grade}: ${data.totalStock.toLocaleString()} kg, ₹${data.totalPrice.toLocaleString()}, ${data.count} products`, 20, yPos);
-                yPos += 7;
+                pdf.setFont(undefined, 'normal');
+                pdf.text(`  ${grade}: ${data.totalStock.toLocaleString()} kg, ₹${data.totalPrice.toLocaleString()}, ${data.count} products`, 15, yPos);
+                yPos += 5;
               }
             }
             
@@ -205,7 +224,7 @@ export default function HubStockSummary() {
       }
       
       // Add footer
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       pdf.setFont(undefined, 'italic');
       pdf.text('Confidential - Internal Use Only', 105, 290, { align: 'center' });
       

@@ -260,14 +260,25 @@ export default function AgriCareDashboard({ user }) {
               ) : (
                 <div className="product-grid">
                   {products.slice(0, 4).map(p => (
-                    <div className="product-card" key={p.id}>
-                      <div className="product-image">
-                        <img src="/images/plant12.jpeg" alt={p.name} />
+                    <div className="product-card" key={p.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                      <div className="product-image" style={{ height: '160px', background: '#f8fafc', display: 'grid', placeItems: 'center' }}>
+                        {p.image ? (
+                          <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ fontSize: '48px' }}>🧪</div>
+                        )}
                       </div>
-                      <div className="product-details">
-                        <h4>{p.name}</h4>
-                        <p className="product-price">{formatCurrency(p.price)} • Stock {p.stock}</p>
-                        <button className="view-all-btn" onClick={() => setActive("products")}>Manage</button>
+                      <div className="product-details" style={{ padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{p.name}</h4>
+                          <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>{p.type}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '18px', fontWeight: '700', color: '#059669' }}>{formatCurrency(p.price)}</span>
+                          <span style={{ fontSize: '14px', color: '#64748b' }}>Stock: {p.stock}</span>
+                        </div>
+                        <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '12px', minHeight: '40px' }}>{p.description || 'No description available'}</p>
+                        <button className="view-all-btn" onClick={() => setActive("products")} style={{ width: '100%', padding: '8px', borderRadius: '8px', fontWeight: '500' }}>Manage Product</button>
                       </div>
                     </div>
                   ))}
@@ -303,32 +314,50 @@ export default function AgriCareDashboard({ user }) {
           {filteredProducts.length === 0 ? (
             <p>No products found</p>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Stock</th>
-                  <th>Price</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map(p => (
-                  <tr key={p._id || p.id}>
-                    <td>{p._id || p.id}</td>
-                    <td>{p.name}</td>
-                    <td>{p.type || '-'}</td>
-                    <td>{p.stock}</td>
-                    <td>{formatCurrency(p.price)}</td>
-                    <td>
-                      <button className="view-all-btn" onClick={() => alert(`Edit ${p.name}`)}>Edit</button>
-                    </td>
+            <div className="table-container" style={{ overflow: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <table className="data-table" style={{ minWidth: '600px' }}>
+                <thead style={{ background: '#f8fafc' }}>
+                  <tr>
+                    <th style={{ padding: '12px 16px', textAlign: 'left' }}>ID</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left' }}>Product</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left' }}>Type</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>Stock</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right' }}>Price</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredProducts.map(p => (
+                    <tr key={p._id || p.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>{p._id || p.id}</td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {p.image ? (
+                            <img src={p.image} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }} />
+                          ) : (
+                            <div style={{ width: '40px', height: '40px', background: '#f1f5f9', display: 'grid', placeItems: 'center', borderRadius: '8px' }}>🧪</div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: '600', color: '#1e293b' }}>{p.name}</div>
+                            {p.description && <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{p.description.substring(0, 50)}{p.description.length > 50 ? '...' : ''}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <span style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '600' }}>{p.type || 'N/A'}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <span style={{ background: p.stock > 10 ? '#dcfce7' : '#fee2e2', color: p.stock > 10 ? '#166534' : '#b91c1c', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600' }}>{p.stock}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', verticalAlign: 'middle', fontWeight: '600', color: '#059669' }}>{formatCurrency(p.price)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <button className="view-all-btn" onClick={() => alert(`Edit ${p.name}`)} style={{ padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}>Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
@@ -343,52 +372,68 @@ export default function AgriCareDashboard({ user }) {
             </div>
             <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 16 }}>
               {formError && <div className="alert-error" style={{ marginBottom: 12 }}>⚠️ {formError}</div>}
-              <form onSubmit={onAddProduct} className="edit-profile-form">
-                <div className="form-group">
-                  <label>Name</label>
-                  <input name="name" value={form.name} onChange={onFormChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Type</label>
-                  <select name="type" value={form.type} onChange={onFormChange}>
-                    <option>Fertilizer</option>
-                    <option>Tonic</option>
-                    <option>Medicine</option>
-                    <option>Seeds</option>
-                    <option>Equipment</option>
-                    <option>Service</option>
-                    <option>Pesticide</option>
-                    <option>Fungicide</option>
-                    <option>Herbicide</option>
-                    <option>Soil Test Kit</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <form onSubmit={onAddProduct} className="edit-profile-form" style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div className="form-group">
-                    <label>Price (₹)</label>
-                    <input type="number" name="price" value={form.price} min="0.01" step="0.01" onChange={onFormChange} required />
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Product Name *</label>
+                    <input name="name" value={form.name} onChange={onFormChange} required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }} />
                   </div>
                   <div className="form-group">
-                    <label>Stock</label>
-                    <input type="number" name="stock" value={form.stock} min="1" step="1" onChange={onFormChange} required />
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Category</label>
+                    <select name="type" value={form.type} onChange={onFormChange} style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }}>
+                      <option>Fertilizer</option>
+                      <option>Tonic</option>
+                      <option>Medicine</option>
+                      <option>Seeds</option>
+                      <option>Equipment</option>
+                      <option>Service</option>
+                      <option>Pesticide</option>
+                      <option>Fungicide</option>
+                      <option>Herbicide</option>
+                      <option>Soil Test Kit</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="form-group">
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Price (₹) *</label>
+                      <input type="number" name="price" value={form.price} min="0.01" step="0.01" onChange={onFormChange} required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }} />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Stock *</label>
+                      <input type="number" name="stock" value={form.stock} min="1" step="1" onChange={onFormChange} required style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Description</label>
+                    <textarea name="description" value={form.description} onChange={onFormChange} rows="3" style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', resize: 'vertical' }} />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>Image (file)</label>
-                  <input type="file" accept="image/*" onChange={onFileChange} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className="form-group">
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Upload Image</label>
+                    <input type="file" accept="image/*" onChange={onFileChange} style={{ padding: '8px', border: '1px dashed #cbd5e1', borderRadius: '8px', fontSize: '14px' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155' }}>Image URL (optional)</label>
+                    <input name="image" value={form.image} onChange={onFormChange} placeholder="https://..." style={{ padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }} />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#f8fafc', borderRadius: '12px', height: '100%', display: 'grid', placeItems: 'center', overflow: 'hidden', border: '1px solid #e2e8f1', width: '100%' }}>
+                      {preview || form.image ? (
+                        <img src={preview || form.image} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px' }} />
+                      ) : (
+                        <div style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>
+                          <div style={{ fontSize: '48px', marginBottom: '8px' }}>📷</div>
+                          <p>Image Preview</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Image URL (optional)</label>
-                  <input name="image" value={form.image} onChange={onFormChange} placeholder="https://..." />
-                </div>
-                <div className="form-group">
-                  <label>Description</label>
-                  <textarea name="description" value={form.description} onChange={onFormChange} />
-                </div>
-                <div className="form-actions">
-                  <button className="save-btn" type="submit" disabled={adding}>{adding ? 'Adding...' : 'Add Product'}</button>
-                  <button className="view-all-btn" type="button" onClick={() => { setShowAddModal(false); resetForm(); }}>Cancel</button>
+                <div className="form-actions" style={{ gridColumn: '1 / -1', display: 'flex', gap: '12px', paddingTop: '12px' }}>
+                  <button className="save-btn" type="submit" disabled={adding} style={{ flex: 1, padding: '12px', fontSize: '16px', fontWeight: '600' }}>{adding ? 'Adding Product...' : 'Add Product'}</button>
+                  <button className="view-all-btn" type="button" onClick={() => { setShowAddModal(false); resetForm(); }} style={{ flex: 1, padding: '12px', fontSize: '16px', fontWeight: '600' }}>Cancel</button>
                 </div>
               </form>
               <div className="preview-pane" style={{ paddingLeft: 8 }}>

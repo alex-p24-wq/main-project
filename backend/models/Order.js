@@ -12,6 +12,11 @@ const OrderItemSchema = new mongoose.Schema({
 const OrderSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   items: { type: [OrderItemSchema], required: true, validate: v => Array.isArray(v) && v.length > 0 },
+  id: { type: String }, // Custom friendly ID
+  orderType: { type: String, enum: ['cardamom', 'agricare', 'regular'], default: 'regular' },
+  agricareProvider: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  subtotal: { type: Number },
+  platformFee: { type: Number, default: 0 },
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: 'INR' },
   status: { 

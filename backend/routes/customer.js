@@ -156,7 +156,11 @@ router.post('/orders', requireAuth, requireRole('customer'), async (req, res) =>
     if (!product) return res.status(404).json({ message: 'Product not found' });
     if ((product.stock || 0) < qty) return res.status(400).json({ message: 'Insufficient stock' });
 
-    const amount = qty * (product.price || 0);
+    const subtotal = qty * (product.price || 0);
+    // 5% platform fee calculation
+    const platformFee = Number((subtotal * 0.05).toFixed(2));
+    const amount = subtotal + platformFee;
+
     const order = await Order.create({
       customer: req.user._id,
       items: [{
@@ -167,6 +171,8 @@ router.post('/orders', requireAuth, requireRole('customer'), async (req, res) =>
         price: product.price,
         quantity: qty,
       }],
+      subtotal,
+      platformFee,
       amount,
       currency: 'INR',
       status: 'Pending',

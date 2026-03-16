@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../../../css/HubDashboard.css";
 import "../../../css/HubRequests.css";
-import { getHubOrderRequests, updateOrderRequestStatus, getCurrentUser } from "../../../services/api";
+import { getHubIncomingRequests, acceptHubRequest, rejectHubRequest, getCurrentUser } from "../../../services/api";
 import { useToast } from "../../notifications/ToastContainer";
 
 export default function HubRequests({ user }) {
@@ -11,7 +11,7 @@ export default function HubRequests({ user }) {
   const [filter, setFilter] = useState("all"); // all, pending, accepted, rejected
   const [expandedRequest, setExpandedRequest] = useState(null);
   const [roleError, setRoleError] = useState(false);
-  
+
   // Toast notifications
   const { showSuccess, showError, showWarning } = useToast();
 
@@ -23,7 +23,7 @@ export default function HubRequests({ user }) {
         console.log('🔍 Fetching hub requests for user:', user);
         console.log('🔍 User role:', user?.role);
         console.log('🔍 Auth token exists:', !!localStorage.getItem('token'));
-        
+
         // Debug: Check current user from backend
         try {
           const currentUser = await getCurrentUser();
@@ -31,14 +31,14 @@ export default function HubRequests({ user }) {
         } catch (debugError) {
           console.error('❌ Failed to get current user info:', debugError);
         }
-        
-        const response = await getHubOrderRequests({ limit: 100 });
+
+        const response = await getHubIncomingRequests();
         console.log('📊 Hub requests response:', response);
-        
+
         // Check if response has data
         if (response && response.data && Array.isArray(response.data)) {
           console.log('✅ Found', response.data.length, 'requests');
-          
+
           // Show notification only on manual refresh or first load
           if (response.data.length > 0 && !loading) {
             showSuccess(
@@ -49,21 +49,21 @@ export default function HubRequests({ user }) {
           }
           const fetchedRequests = response.data.map(req => ({
             id: req._id,
-            customerName: req.customerName,
-            customerEmail: req.customerEmail,
-            customerPhone: req.customerPhone,
-            productType: req.productType,
-            grade: req.grade,
+            customerName: req.orderRequest?.customerName || req.orderRequest?.customer?.username || 'Unknown',
+            customerEmail: req.orderRequest?.customerEmail || req.orderRequest?.customer?.email,
+            customerPhone: req.orderRequest?.customerPhone || req.orderRequest?.customer?.phone,
+            productType: req.orderRequest?.productType || 'Product',
+            grade: req.orderRequest?.grade,
             quantity: req.quantity,
-            budgetMin: req.budgetMin,
-            budgetMax: req.budgetMax,
-            urgency: req.urgency,
-            preferredHub: req.preferredHub,
-            description: req.description,
+            budgetMin: req.orderRequest?.budgetMin,
+            budgetMax: req.orderRequest?.budgetMax,
+            urgency: req.orderRequest?.urgency || 'normal',
+            preferredHub: req.orderRequest?.preferredHub,
+            description: req.orderRequest?.description,
             status: req.status,
             createdAt: req.createdAt
           }));
-          
+
           setRequests(fetchedRequests);
         } else {
           setRequests([]);
@@ -73,16 +73,16 @@ export default function HubRequests({ user }) {
         console.error("❌ Error status:", error?.response?.status);
         console.error("❌ Error message:", error?.response?.data?.message);
         console.error("❌ Full error response:", error?.response);
-        
+
         // Don't throw error, just set empty array
         setRequests([]);
-        
+
         // Check if this is an auth/role error
         if (error?.response?.status === 403) {
           console.error("🚫 Access denied - user may not have hub role");
           setRoleError(true);
         }
-        
+
         // Only log auth errors, don't propagate them
         if (!error.isAuthError) {
           console.warn('Request loading failed due to non-auth error:', error.message);
@@ -93,13 +93,13 @@ export default function HubRequests({ user }) {
     };
 
     fetchRequests();
-    
+
     // Set up auto-refresh every 60 seconds to check for new requests (reduced frequency)
     const refreshInterval = setInterval(() => {
       console.log('🔄 Auto-refreshing hub requests...');
       fetchRequests();
     }, 60000);
-    
+
     // Cleanup interval on unmount
     return () => clearInterval(refreshInterval);
   }, []);
@@ -108,28 +108,28 @@ export default function HubRequests({ user }) {
   const handleManualRefresh = async () => {
     setRefreshing(true);
     try {
-      const response = await getHubOrderRequests({ limit: 100 });
-      
+      const response = await getHubIncomingRequests();
+
       if (response && response.data && Array.isArray(response.data)) {
         const fetchedRequests = response.data.map(req => ({
           id: req._id,
-          customerName: req.customerName,
-          customerEmail: req.customerEmail,
-          customerPhone: req.customerPhone,
-          productType: req.productType,
-          grade: req.grade,
+          customerName: req.orderRequest?.customerName || req.orderRequest?.customer?.username || 'Unknown',
+          customerEmail: req.orderRequest?.customerEmail || req.orderRequest?.customer?.email,
+          customerPhone: req.orderRequest?.customerPhone || req.orderRequest?.customer?.phone,
+          productType: req.orderRequest?.productType,
+          grade: req.orderRequest?.grade,
           quantity: req.quantity,
-          budgetMin: req.budgetMin,
-          budgetMax: req.budgetMax,
-          urgency: req.urgency,
-          preferredHub: req.preferredHub,
-          description: req.description,
+          budgetMin: req.orderRequest?.budgetMin,
+          budgetMax: req.orderRequest?.budgetMax,
+          urgency: req.orderRequest?.urgency,
+          preferredHub: req.orderRequest?.preferredHub,
+          description: req.orderRequest?.description,
           status: req.status,
           createdAt: req.createdAt
         }));
-        
+
         setRequests(fetchedRequests);
-        
+
         // Show refresh notification
         showSuccess(
           'Refreshed Successfully! 🔄',
@@ -160,22 +160,28 @@ export default function HubRequests({ user }) {
   const handleStatusChange = async (requestId, newStatus) => {
     try {
       console.log(`🔄 Attempting to ${newStatus} request ${requestId}...`);
-      
+
       // Find the request to get customer name
       const request = requests.find(req => req.id === requestId);
       const customerName = request?.customerName || 'Customer';
-      
-      await updateOrderRequestStatus(requestId, newStatus);
-      
+
+      if (newStatus === 'accepted') {
+        await acceptHubRequest(requestId);
+      } else if (newStatus === 'rejected') {
+        await rejectHubRequest(requestId);
+      } else {
+        throw new Error('Invalid status update');
+      }
+
       // Update local state
-      setRequests(prev => 
-        prev.map(req => 
+      setRequests(prev =>
+        prev.map(req =>
           req.id === requestId ? { ...req, status: newStatus } : req
         )
       );
-      
+
       console.log(`✅ Request ${requestId} ${newStatus} successfully`);
-      
+
       // Show beautiful success notification
       if (newStatus === 'accepted') {
         showSuccess(
@@ -196,11 +202,11 @@ export default function HubRequests({ user }) {
           { duration: 3000 }
         );
       }
-      
+
     } catch (error) {
       console.error("❌ Error updating request status:", error);
       console.error("❌ Error details:", error?.response?.data);
-      
+
       // Show beautiful error notifications
       if (error?.response?.status === 403) {
         showError(
@@ -245,7 +251,7 @@ export default function HubRequests({ user }) {
           <p>Manage custom order requests from customers • Auto-refreshes every 60s</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button 
+          <button
             onClick={handleManualRefresh}
             disabled={refreshing}
             style={{
@@ -269,26 +275,26 @@ export default function HubRequests({ user }) {
 
       {/* Filter Tabs */}
       <div className="filter-tabs">
-        <button 
-          className={filter === "all" ? "active" : ""} 
+        <button
+          className={filter === "all" ? "active" : ""}
           onClick={() => setFilter("all")}
         >
           All ({requests.length})
         </button>
-        <button 
-          className={filter === "pending" ? "active" : ""} 
+        <button
+          className={filter === "pending" ? "active" : ""}
           onClick={() => setFilter("pending")}
         >
           Pending ({requests.filter(r => r.status === "pending").length})
         </button>
-        <button 
-          className={filter === "accepted" ? "active" : ""} 
+        <button
+          className={filter === "accepted" ? "active" : ""}
           onClick={() => setFilter("accepted")}
         >
           Accepted ({requests.filter(r => r.status === "accepted").length})
         </button>
-        <button 
-          className={filter === "rejected" ? "active" : ""} 
+        <button
+          className={filter === "rejected" ? "active" : ""}
           onClick={() => setFilter("rejected")}
         >
           Rejected ({requests.filter(r => r.status === "rejected").length})
@@ -322,11 +328,11 @@ export default function HubRequests({ user }) {
               const isExpanded = expandedRequest === request.id;
               const urgencyBadge = getUrgencyBadge(request.urgency);
               const statusBadge = getStatusBadge(request.status);
-              
+
               return (
                 <div key={request.id} className="request-card">
                   {/* Card Header */}
-                  <div 
+                  <div
                     className="request-header"
                     onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
                   >
@@ -335,17 +341,17 @@ export default function HubRequests({ user }) {
                       <p>{request.grade} • {request.quantity} kg</p>
                     </div>
                     <div className="request-badges">
-                      <span 
-                        className="urgency-badge" 
+                      <span
+                        className="urgency-badge"
                         style={{ color: urgencyBadge.color }}
                       >
                         {urgencyBadge.label}
                       </span>
-                      <span 
-                        className="status-badge" 
-                        style={{ 
-                          background: statusBadge.bg, 
-                          color: statusBadge.color 
+                      <span
+                        className="status-badge"
+                        style={{
+                          background: statusBadge.bg,
+                          color: statusBadge.color
                         }}
                       >
                         {statusBadge.label}
@@ -414,13 +420,13 @@ export default function HubRequests({ user }) {
                     {/* Action Buttons */}
                     {request.status === "pending" && (
                       <div className="request-actions">
-                        <button 
+                        <button
                           className="btn-accept"
                           onClick={() => handleStatusChange(request.id, "accepted")}
                         >
                           ✅ Accept Request
                         </button>
-                        <button 
+                        <button
                           className="btn-reject"
                           onClick={() => handleStatusChange(request.id, "rejected")}
                         >

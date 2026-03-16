@@ -1,6 +1,8 @@
 import express from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import OrderRequest from '../models/OrderRequest.js';
+import HubRequest from '../models/HubRequest.js';
+import Product from '../models/Product.js';
 
 const router = express.Router();
 
@@ -97,7 +99,7 @@ router.get('/my-requests', requireAuth, requireRole('customer'), async (req, res
 // Admin: Get all order requests (optionally filtered by hub)
 router.get('/admin-requests', requireAuth, requireRole('admin'), async (req, res) => {
   console.log('🔍 Admin requests accessed by user:', req.user.username, 'Role:', req.user.role);
-  
+
   try {
     const { status, preferredHub, page = 1, limit = 50 } = req.query;
     const skip = (page - 1) * limit;
@@ -140,14 +142,14 @@ router.get('/admin-requests', requireAuth, requireRole('admin'), async (req, res
 router.get('/hub-requests', requireAuth, async (req, res) => {
   console.log('🔍 Hub requests accessed by user:', req.user.username, 'Role:', req.user.role);
   console.log('⚠️  WARNING: /hub-requests is deprecated. Use /admin-requests instead.');
-  
+
   // Only allow admin role
   if (req.user.role !== 'admin') {
-    return res.status(403).json({ 
-      message: 'Access denied. Customer product requests are now managed by administrators only.' 
+    return res.status(403).json({
+      message: 'Access denied. Customer product requests are now managed by administrators only.'
     });
   }
-  
+
   try {
     const { status, preferredHub, page = 1, limit = 50 } = req.query;
     const skip = (page - 1) * limit;
@@ -210,7 +212,52 @@ router.patch('/:id/status', requireAuth, requireRole('admin'), async (req, res) 
 
     await orderRequest.save();
 
+    await orderRequest.save();
+
     console.log(`✅ Order request ${id} status updated to ${status} by ${req.user.username}`);
+
+    // If request is accepted, find suitable hubs and send requests
+    if (status === 'accepted') {
+      try {
+        // Find products matching criteria with sufficient stock
+        const matchingProducts = await Product.find({
+          $or: [
+            { type: orderRequest.productType },
+            { name: { $regex: new RegExp(orderRequest.productType, 'i') } }
+          ],
+          grade: orderRequest.grade === 'Any' ? { $exists: true } : orderRequest.grade,
+          stock: { $gte: orderRequest.quantity },
+          hubId: { $exists: true, $ne: null }
+        }).populate('hubId');
+
+        console.log(`Found ${matchingProducts.length} suitable products/hubs`);
+
+        const hubRequests = [];
+        for (const product of matchingProducts) {
+          // Check if we already sent a request to this hub for this order
+          const existingRequest = await HubRequest.findOne({
+            orderRequest: orderRequest._id,
+            hub: product.hubId._id
+          });
+
+          if (!existingRequest) {
+            const hubRequest = await HubRequest.create({
+              orderRequest: orderRequest._id,
+              hub: product.hubId._id,
+              requestedProduct: product._id,
+              quantity: orderRequest.quantity,
+              status: 'pending'
+            });
+            hubRequests.push(hubRequest);
+          }
+        }
+
+        console.log(`Created ${hubRequests.length} hub requests`);
+      } catch (err) {
+        console.error('Error creating hub requests:', err);
+        // Don't fail the response if this background task fails, but maybe log it well
+      }
+    }
 
     res.json({
       success: true,

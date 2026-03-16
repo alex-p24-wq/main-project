@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../../services/api";
+import api, { getCardamomPrices } from "../../../services/api";
 import { indianStatesDistricts } from "../../../data/indianStatesDistricts";
 import "../../../css/FarmerComponents.css";
 import { validateFarmerProductImage } from "../../../utils/imageValidation";
@@ -88,13 +88,39 @@ export default function BulkProductManager() {
 
       // Skip validation - just set the image file directly
       setImageFile(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
+
+      // Auto-fill price based on market data
+      fetchAndSetMarketPrice();
+    }
+  };
+
+  const fetchAndSetMarketPrice = async () => {
+    try {
+      const response = await getCardamomPrices();
+
+      if (response && response.success && response.data && response.data.length > 0) {
+        // Get the latest available price (avg_price)
+        const marketData = response.data[0];
+        const avgPriceStr = marketData.avg_price;
+        const cleanPrice = avgPriceStr.replace(/[^\d.]/g, '');
+        const price = parseFloat(cleanPrice);
+
+        if (!isNaN(price) && price > 0) {
+          setFormData(prev => ({
+            ...prev,
+            price: price.toFixed(2)
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to auto-fill price:", error);
     }
   };
 
@@ -151,7 +177,7 @@ export default function BulkProductManager() {
       });
 
       setSuccess('Bulk product added successfully!');
-      
+
       // Reset form
       setFormData({
         name: 'Cardamom',
@@ -277,9 +303,9 @@ export default function BulkProductManager() {
                 ))}
               </select>
               <small className="form-hint">
-                {formData.district 
-                  ? hubs.length > 0 
-                    ? `${hubs.length} hub(s) available in ${formData.district}` 
+                {formData.district
+                  ? hubs.length > 0
+                    ? `${hubs.length} hub(s) available in ${formData.district}`
                     : 'No hubs available in this district'
                   : 'Select a district first'}
               </small>
@@ -406,8 +432,8 @@ export default function BulkProductManager() {
 
           {/* Submit Button */}
           <div className="form-actions">
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-large"
               disabled={loading}
             >

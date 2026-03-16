@@ -49,7 +49,7 @@ export default function CheckoutPage() {
     };
 
     window.addEventListener('forceLogout', handleForceLogout);
-    
+
     return () => {
       window.removeEventListener('forceLogout', handleForceLogout);
     };
@@ -71,7 +71,7 @@ export default function CheckoutPage() {
       if (saved) {
         const addresses = JSON.parse(saved);
         setSavedAddresses(Array.isArray(addresses) ? addresses : []);
-        
+
         // Auto-select the first address if available
         if (addresses.length > 0) {
           setShippingAddress(addresses[0]);
@@ -102,9 +102,13 @@ export default function CheckoutPage() {
     return () => { mounted = false; };
   }, [productId]);
 
+  const PLATFORM_FEE_PERCENT = 5; // 5% platform rent fee
+
   const maxQty = useMemo(() => Math.max(0, Number(product?.stock) || 0), [product]);
   const unitPrice = useMemo(() => Number(product?.price) || 0, [product]);
   const totalAmount = useMemo(() => Math.max(1, quantity) * unitPrice, [quantity, unitPrice]);
+  const platformFee = useMemo(() => Math.round(totalAmount * PLATFORM_FEE_PERCENT) / 100, [totalAmount]);
+  const finalTotal = useMemo(() => totalAmount + platformFee, [totalAmount, platformFee]);
 
   const updateAddr = (k, v) => {
     setShippingAddress(prev => ({ ...prev, [k]: v }));
@@ -122,26 +126,26 @@ export default function CheckoutPage() {
     try {
       const newAddress = { ...shippingAddress };
       const updatedAddresses = [...savedAddresses];
-      
+
       // Check if address already exists
-      const existingIndex = updatedAddresses.findIndex(addr => 
-        addr.line1 === newAddress.line1 && 
-        addr.city === newAddress.city && 
+      const existingIndex = updatedAddresses.findIndex(addr =>
+        addr.line1 === newAddress.line1 &&
+        addr.city === newAddress.city &&
         addr.postalCode === newAddress.postalCode
       );
-      
+
       if (existingIndex === -1) {
         updatedAddresses.unshift(newAddress); // Add to beginning
         // Keep only last 3 addresses
         if (updatedAddresses.length > 3) {
           updatedAddresses.pop();
         }
-        
+
         localStorage.setItem("customerAddresses", JSON.stringify(updatedAddresses));
         setSavedAddresses(updatedAddresses);
         setSelectedAddressIndex(0);
       }
-      
+
       setShowSaveAddressModal(false);
     } catch (error) {
       console.error('Failed to save address:', error);
@@ -150,12 +154,12 @@ export default function CheckoutPage() {
 
   const checkAndPromptSaveAddress = () => {
     // Check if current address is different from saved ones
-    const isNewAddress = !savedAddresses.some(addr => 
-      addr.line1 === shippingAddress.line1 && 
-      addr.city === shippingAddress.city && 
+    const isNewAddress = !savedAddresses.some(addr =>
+      addr.line1 === shippingAddress.line1 &&
+      addr.city === shippingAddress.city &&
       addr.postalCode === shippingAddress.postalCode
     );
-    
+
     if (isNewAddress && shippingAddress.line1 && shippingAddress.city) {
       setShowSaveAddressModal(true);
       return true;
@@ -173,34 +177,34 @@ export default function CheckoutPage() {
         notes: notes?.trim() ? notes.trim() : undefined,
         paymentMethod: "COD",
       });
-      
+
       const orderId = orderResponse.order._id?.slice(-6).toUpperCase() || 'N/A';
-      const amount = totalAmount.toLocaleString("en-IN");
-      
+      const amount = finalTotal.toLocaleString("en-IN");
+
       // Add success notification to bell icon
       addNotification(notificationTemplates.codOrderPlaced(orderId, amount));
-      
+
       // Show beautiful toast notification
       showSuccess(
         "Order Placed Successfully!",
         `Your COD order #${orderId} for ₹${amount} has been confirmed. You will pay on delivery.`,
-        { 
+        {
           icon: "💰",
           duration: 6000
         }
       );
-      
+
       // Navigate after a short delay to let user see the toast
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch (e2) {
       // Add error notification to bell icon
       addNotification(notificationTemplates.paymentFailed(e2?.message || "Failed to place order"));
-      
+
       // Show beautiful error toast
       showError(
         "Order Failed",
         e2?.message || "Failed to place order. Please try again.",
-        { 
+        {
           icon: "❌",
           duration: 7000
         }
@@ -214,7 +218,7 @@ export default function CheckoutPage() {
     let orderResponse;
     try {
       setPlacing(true);
-      
+
       // First create the order
       orderResponse = await createCustomerOrder({
         productId: product._id || product.id,
@@ -225,7 +229,7 @@ export default function CheckoutPage() {
       });
 
       const orderId = orderResponse.order._id;
-      
+
       // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
@@ -235,7 +239,7 @@ export default function CheckoutPage() {
       // Create Razorpay order
       setProcessingPayment(true);
       const paymentOrder = await createPaymentOrder(orderId);
-      
+
       // Initialize Razorpay payment
       const paymentResult = await initializeRazorpayPayment({
         key: paymentOrder.keyId,
@@ -262,8 +266,8 @@ export default function CheckoutPage() {
       });
 
       const orderIdShort = orderId?.slice(-6).toUpperCase() || 'N/A';
-      const amount = totalAmount.toLocaleString("en-IN");
-      
+      const amount = finalTotal.toLocaleString("en-IN");
+
       // Add success notifications to bell icon
       addNotification(notificationTemplates.paymentSuccess(amount, orderIdShort));
       addNotification(notificationTemplates.orderConfirmed(orderIdShort, amount));
@@ -272,27 +276,27 @@ export default function CheckoutPage() {
       showSuccess(
         "Payment Successful!",
         `Your payment of ₹${amount} has been processed successfully. Order #${orderIdShort} is confirmed and will be processed soon.`,
-        { 
+        {
           icon: "🎉",
           duration: 7000
         }
       );
-      
+
       // Navigate after a short delay to let user see the toast
       setTimeout(() => navigate("/dashboard"), 2000);
-      
+
     } catch (error) {
       console.error("Payment error:", error);
-      
+
       if (error.message === "Payment cancelled by user") {
         // Add cancellation notification to bell icon
         addNotification(notificationTemplates.paymentCancelled());
-        
+
         // Show warning toast
         showWarning(
           "Payment Cancelled",
           "Payment was cancelled. Your order is saved and you can retry payment later.",
-          { 
+          {
             icon: "⏸️",
             duration: 6000
           }
@@ -303,15 +307,15 @@ export default function CheckoutPage() {
           await handlePaymentFailure(orderResponse.order._id, error);
         }
         const failureReason = error.description || error.reason || "Unknown error";
-        
+
         // Add failure notification to bell icon
         addNotification(notificationTemplates.paymentFailed(failureReason));
-        
+
         // Show error toast
         showError(
           "Payment Failed",
           `Payment could not be processed: ${failureReason}`,
-          { 
+          {
             icon: "💳",
             duration: 8000
           }
@@ -320,12 +324,12 @@ export default function CheckoutPage() {
         // General error
         const errorMessage = error?.message || "Payment failed. Please try again.";
         addNotification(notificationTemplates.paymentFailed(errorMessage));
-        
+
         // Show error toast
         showError(
           "Payment Error",
           errorMessage,
-          { 
+          {
             icon: "❌",
             duration: 7000
           }
@@ -391,8 +395,8 @@ export default function CheckoutPage() {
               <div className="section-header">
                 <h3 className="section-title">📍 Delivery Address</h3>
                 {savedAddresses.length > 0 && (
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn-link"
                     onClick={() => setSelectedAddressIndex(-1)}
                   >
@@ -407,7 +411,7 @@ export default function CheckoutPage() {
                   <h4 className="saved-title">Saved Addresses</h4>
                   <div className="address-grid">
                     {savedAddresses.map((addr, index) => (
-                      <div 
+                      <div
                         key={index}
                         className={`address-card ${selectedAddressIndex === index ? 'selected' : ''}`}
                         onClick={() => selectSavedAddress(index)}
@@ -431,64 +435,64 @@ export default function CheckoutPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label>Full Name *</label>
-                    <input 
-                      value={shippingAddress.fullName} 
-                      onChange={e => updateAddr("fullName", e.target.value)} 
+                    <input
+                      value={shippingAddress.fullName}
+                      onChange={e => updateAddr("fullName", e.target.value)}
                       placeholder="Enter your full name"
-                      required 
+                      required
                     />
                   </div>
                   <div className="field">
                     <label>Phone Number *</label>
-                    <input 
-                      value={shippingAddress.phone} 
-                      onChange={e => updateAddr("phone", e.target.value)} 
+                    <input
+                      value={shippingAddress.phone}
+                      onChange={e => updateAddr("phone", e.target.value)}
                       placeholder="10-digit mobile number"
-                      required 
+                      required
                     />
                   </div>
                   <div className="field full">
                     <label>Address Line 1 *</label>
-                    <input 
-                      value={shippingAddress.line1} 
-                      onChange={e => updateAddr("line1", e.target.value)} 
+                    <input
+                      value={shippingAddress.line1}
+                      onChange={e => updateAddr("line1", e.target.value)}
                       placeholder="House/Flat/Block No., Street Name"
-                      required 
+                      required
                     />
                   </div>
                   <div className="field full">
                     <label>Address Line 2 (Optional)</label>
-                    <input 
-                      value={shippingAddress.line2} 
-                      onChange={e => updateAddr("line2", e.target.value)} 
+                    <input
+                      value={shippingAddress.line2}
+                      onChange={e => updateAddr("line2", e.target.value)}
                       placeholder="Landmark, Area, Colony"
                     />
                   </div>
                   <div className="field">
                     <label>City *</label>
-                    <input 
-                      value={shippingAddress.city} 
-                      onChange={e => updateAddr("city", e.target.value)} 
+                    <input
+                      value={shippingAddress.city}
+                      onChange={e => updateAddr("city", e.target.value)}
                       placeholder="City"
-                      required 
+                      required
                     />
                   </div>
                   <div className="field">
                     <label>State *</label>
-                    <input 
-                      value={shippingAddress.state} 
-                      onChange={e => updateAddr("state", e.target.value)} 
+                    <input
+                      value={shippingAddress.state}
+                      onChange={e => updateAddr("state", e.target.value)}
                       placeholder="State"
-                      required 
+                      required
                     />
                   </div>
                   <div className="field">
                     <label>PIN Code *</label>
-                    <input 
-                      value={shippingAddress.postalCode} 
-                      onChange={e => updateAddr("postalCode", e.target.value)} 
+                    <input
+                      value={shippingAddress.postalCode}
+                      onChange={e => updateAddr("postalCode", e.target.value)}
                       placeholder="6-digit PIN code"
-                      required 
+                      required
                     />
                   </div>
                   <div className="field">
@@ -507,14 +511,14 @@ export default function CheckoutPage() {
                 <div className="secure-badge">🔒 100% Secure</div>
               </div>
               <div className="pm-options">
-                <div 
+                <div
                   className={`pm-tile ${paymentMethod === "ONLINE" ? "active" : ""}`}
                   onClick={() => setPaymentMethod("ONLINE")}
                 >
-                  <input 
-                    type="radio" 
-                    name="paymentMethod" 
-                    value="ONLINE" 
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="ONLINE"
                     checked={paymentMethod === "ONLINE"}
                     readOnly
                   />
@@ -523,14 +527,14 @@ export default function CheckoutPage() {
                     <div style={{ fontSize: "12px", color: "#6b7280" }}>UPI, Cards, Net Banking</div>
                   </div>
                 </div>
-                <div 
+                <div
                   className={`pm-tile ${paymentMethod === "COD" ? "active" : ""}`}
                   onClick={() => setPaymentMethod("COD")}
                 >
-                  <input 
-                    type="radio" 
-                    name="paymentMethod" 
-                    value="COD" 
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="COD"
                     checked={paymentMethod === "COD"}
                     readOnly
                   />
@@ -577,7 +581,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    {paymentMethod === "COD" ? "🛒" : "💳"} {paymentMethod === "COD" ? "Place Order" : "Pay Now"} - ₹{totalAmount.toLocaleString("en-IN")}
+                    {paymentMethod === "COD" ? "🛒" : "💳"} {paymentMethod === "COD" ? "Place Order" : "Pay Now"} - ₹{finalTotal.toLocaleString("en-IN")}
                   </>
                 )}
               </button>
@@ -616,12 +620,21 @@ export default function CheckoutPage() {
             </div>
 
             <div className="hr" />
-            <div className="totals">
-              <span>Total</span>
+            <div className="totals" style={{ color: "#6b7280", fontWeight: 400, fontSize: "14px" }}>
+              <span>Item Total</span>
               <span>₹{totalAmount.toLocaleString("en-IN")}</span>
             </div>
+            <div className="totals" style={{ color: "#f59e0b", fontWeight: 500, fontSize: "13px", marginTop: 6 }}>
+              <span>🏷️ Platform Fee ({PLATFORM_FEE_PERCENT}%)</span>
+              <span>+ ₹{platformFee.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="hr" style={{ margin: "10px 0" }} />
+            <div className="totals" style={{ fontWeight: 700, fontSize: "16px" }}>
+              <span>Total Payable</span>
+              <span style={{ color: "#10b981" }}>₹{finalTotal.toLocaleString("en-IN")}</span>
+            </div>
             <div className="p-sub" style={{ marginTop: 6 }}>
-              Inclusive of all taxes
+              Inclusive of 5% platform fee
             </div>
           </div>
         </div>
@@ -638,14 +651,14 @@ export default function CheckoutPage() {
             <div className="modal-content">
               <p>Would you like to save this address for future orders?</p>
               <div className="address-preview">
-                <strong>{shippingAddress.fullName}</strong><br/>
+                <strong>{shippingAddress.fullName}</strong><br />
                 {shippingAddress.line1}, {shippingAddress.line2 && `${shippingAddress.line2}, `}
                 {shippingAddress.city}, {shippingAddress.state} - {shippingAddress.postalCode}
               </div>
             </div>
             <div className="modal-actions">
-              <button 
-                className="btn btn-ghost" 
+              <button
+                className="btn btn-ghost"
                 onClick={() => {
                   setShowSaveAddressModal(false);
                   proceedWithOrder();
@@ -653,8 +666,8 @@ export default function CheckoutPage() {
               >
                 Skip & Continue
               </button>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={() => {
                   saveCurrentAddress();
                   proceedWithOrder();

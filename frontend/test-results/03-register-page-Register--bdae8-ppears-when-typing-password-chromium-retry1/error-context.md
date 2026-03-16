@@ -1,0 +1,89 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - img "Customer" [ref=e6]
+    - generic [ref=e7]:
+      - img [ref=e8]
+      - text: "Customer: Shop and trade with ease"
+  - generic [ref=e11]:
+    - generic [ref=e12]:
+      - img "Cardo logo" [ref=e13]
+      - heading "Create Account" [level=2] [ref=e14]
+      - paragraph [ref=e15]: Join Cardo — tailored experience for your role
+      - tablist "Select user type" [ref=e16]:
+        - button "Customer" [ref=e17] [cursor=pointer]:
+          - img [ref=e18]
+          - text: Customer
+        - button "Farmer" [ref=e21] [cursor=pointer]:
+          - img [ref=e22]
+          - text: Farmer
+        - button "AgriCare" [ref=e25] [cursor=pointer]:
+          - img [ref=e26]
+          - text: AgriCare
+        - button "Hub Manager" [ref=e29] [cursor=pointer]:
+          - img [ref=e30]
+          - text: Hub Manager
+      - generic [ref=e33]: or continue with
+      - button "Google Sign up with Google" [ref=e35] [cursor=pointer]:
+        - img "Google" [ref=e36]
+        - text: Sign up with Google
+      - generic "Registration progress" [ref=e37]:
+        - generic [ref=e39]:
+          - generic [ref=e40]: Account
+          - generic [ref=e41]: Details
+          - generic [ref=e42]: Review
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - generic [ref=e46]:
+          - img [ref=e47]
+          - text: Username
+        - textbox "Username" [ref=e50]:
+          - /placeholder: Enter username
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - img [ref=e53]
+          - text: Email
+        - generic [ref=e56]:
+          - textbox "Email" [ref=e57]:
+            - /placeholder: Enter email
+          - button "Send OTP" [disabled] [ref=e58] [cursor=pointer]
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - img [ref=e61]
+            - text: Email OTP
+          - textbox "Email OTP" [ref=e64]:
+            - /placeholder: Enter 6-digit code
+          - button "Verify OTP" [disabled] [ref=e65] [cursor=pointer]
+      - generic [ref=e66]:
+        - generic [ref=e67]:
+          - img [ref=e68]
+          - text: Phone
+        - textbox "Phone" [ref=e70]:
+          - /placeholder: Enter phone
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - img [ref=e73]
+          - text: Password
+        - textbox "Password" [active] [ref=e76]:
+          - /placeholder: Enter password
+          - text: TestPass@1
+        - button "Toggle password visibility" [ref=e77] [cursor=pointer]:
+          - img [ref=e78]
+        - generic [ref=e81]:
+          - img [ref=e82]
+          - text: "Strength: Strong • Use 8+ chars with upper, number, symbol."
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - img [ref=e87]
+          - text: Confirm Password
+        - textbox "Confirm Password" [ref=e90]:
+          - /placeholder: Re-enter password
+    - generic [ref=e91]:
+      - button "Next (verify email first)" [disabled] [ref=e93]
+      - generic [ref=e94]:
+        - text: Already have an account?
+        - link "Login" [ref=e95] [cursor=pointer]:
+          - /url: /login
+```

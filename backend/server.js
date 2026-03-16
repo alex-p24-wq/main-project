@@ -17,21 +17,21 @@ const __dirname = path.dirname(__filename);
 // Middleware
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [
-      process.env.FRONTEND_URL || 'https://your-app.vercel.app',
-      'http://localhost:5173', // Allow local development
-      'http://localhost:5174', // Alternative local port
-      'http://localhost:5175', // Alternative local port
-      'http://localhost:5176', // Alternative local port
-      'http://localhost:5177', // Alternative local port
-      'http://localhost:3000'
-    ]
+    process.env.FRONTEND_URL || 'https://your-app.vercel.app',
+    'http://localhost:5173', // Allow local development
+    'http://localhost:5174', // Alternative local port
+    'http://localhost:5175', // Alternative local port
+    'http://localhost:5176', // Alternative local port
+    'http://localhost:5177', // Alternative local port
+    'http://localhost:3000'
+  ]
   : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177'];
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -58,6 +58,7 @@ import authRoutes from "./routes/auth.js";
 import farmerRoutes from "./routes/farmer.js";
 import customerRoutes from "./routes/customer.js";
 import agriCareRoutes from "./routes/agricare.js";
+import agricareOrdersRoutes from "./routes/agricareOrders.js";
 import hubManagerRoutes from "./routes/hubmanager.js";
 import adminRoutes from "./routes/admin.js";
 import feedbackRoutes from "./routes/feedback.js";
@@ -65,13 +66,17 @@ import paymentRoutes from "./routes/payment.js";
 import notificationRoutes from "./routes/notifications.js";
 import hubRoutes from "./routes/hub.js";
 import orderRequestRoutes from "./routes/orderRequest.js";
+import hubRequestRoutes from "./routes/hubRequest.js";
+import diseasePredictionRoutes from "./routes/diseasePrediction.js";
 import Feedback from "./models/Feedback.js";
+import DiseasePrediction from "./models/DiseasePrediction.js";
 import { verifyEmailConfig } from "./utils/emailService.js";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/farmer", farmerRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/agricare", agriCareRoutes);
+app.use("/api/agricare-orders", agricareOrdersRoutes);
 app.use("/api/hubmanager", hubManagerRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/admin", adminRoutes);
@@ -79,6 +84,8 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/hubs", hubRoutes);
 app.use("/api/order-requests", orderRequestRoutes);
+app.use("/api/hub-requests", hubRequestRoutes);
+app.use("/api/disease-prediction", diseasePredictionRoutes);
 
 // Root endpoint - API info
 app.get('/', (req, res) => {
@@ -103,8 +110,8 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
@@ -113,7 +120,7 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     message: 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { error: err.message })
   });
@@ -154,6 +161,13 @@ const connectDB = async () => {
       console.warn('⚠️ Could not ensure OrderRequest indexes:', e?.message || e);
     }
 
+    try {
+      await DiseasePrediction.init();
+      console.log('✅ DiseasePrediction indexes ensured');
+    } catch (e) {
+      console.warn('⚠️ Could not ensure DiseasePrediction indexes:', e?.message || e);
+    }
+
     // Verify email configuration
     try {
       await verifyEmailConfig();
@@ -173,7 +187,7 @@ connectDB().catch(err => console.error('DB connection error:', err));
 const startServer = async () => {
   try {
     await connectDB();
-    
+
     const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 5000;
 
     const startListening = (port, attempt = 0) => {

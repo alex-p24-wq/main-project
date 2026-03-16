@@ -3,7 +3,7 @@ import api from "../../../services/api";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import { notificationTemplates, createErrorNotification } from "../../../utils/notifications";
 import { getAllStates, getDistrictsForState } from "../../../data/indianStatesDistricts";
-import { getHubsByDistrict } from "../../../services/api";
+import { getHubsByDistrict, getCardamomPrices } from "../../../services/api";
 import ProductTypeModal from "../../modals/ProductTypeModal";
 import BulkProductManager from "./BulkProductManager";
 import "../../../css/CardamomComponents.css";
@@ -13,7 +13,7 @@ import { validateFarmerProductImage } from "../../../utils/imageValidation";
 // Manage products to sell (persisted in database)
 export default function ProductManager() {
   const { addNotification } = useNotifications();
-  
+
   const emptyForm = {
     name: "",
     price: "",
@@ -61,7 +61,7 @@ export default function ProductManager() {
   const handleChange = async (e) => {
     const { name, value } = e.target;
     setForm((f) => ({ ...f, [name]: value }));
-    
+
     // Update districts when state changes
     if (name === 'state') {
       const stateDistricts = getDistrictsForState(value);
@@ -69,7 +69,7 @@ export default function ProductManager() {
       setForm((f) => ({ ...f, state: value, district: '', nearestHub: '' })); // Reset district and hub
       setHubs([]); // Clear hubs when state changes
     }
-    
+
     // Update hubs when district changes
     if (name === 'district' && value && form.state) {
       setLoadingHubs(true);
@@ -113,7 +113,7 @@ export default function ProductManager() {
         setError(validationResult.error || 'Please upload an original captured photo, not an AI-generated or cartoon image.');
         return;
       }
-      
+
       // Show warnings if any
       if (validationResult.warnings && validationResult.warnings.length > 0) {
         // Show warnings to the user
@@ -128,7 +128,7 @@ export default function ProductManager() {
       }
 
       setFile(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -139,14 +139,60 @@ export default function ProductManager() {
       console.error('Image validation error:', err);
       // Still allow the image if validation fails (fallback to server-side validation)
       setFile(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
       };
       reader.readAsDataURL(file);
+
+      // Auto-fill price based on market data
+      fetchAndSetMarketPrice();
     });
+  };
+
+  const fetchAndSetMarketPrice = async () => {
+    try {
+      addNotification({
+        type: 'info',
+        title: 'Analyzing Market',
+        message: 'Fetching latest market prices based on image...',
+        icon: '📊',
+        duration: 2000
+      });
+
+      const response = await getCardamomPrices();
+
+      if (response && response.success && response.data && response.data.length > 0) {
+        // Get the latest available price (usually first row)
+        // We use avg_price for a fair suggestion
+        const marketData = response.data[0];
+        const avgPriceStr = marketData.avg_price;
+
+        // Parse "Rs. 1,200.00" or "1200.00"
+        const cleanPrice = avgPriceStr.replace(/[^\d.]/g, '');
+        const price = parseFloat(cleanPrice);
+
+        if (!isNaN(price) && price > 0) {
+          setForm(prev => ({
+            ...prev,
+            price: price.toFixed(2)
+          }));
+
+          addNotification({
+            type: 'success',
+            title: 'Price Auto-filled',
+            message: `Set to ₹${price.toFixed(2)} based on latest market average.`,
+            icon: '💰',
+            duration: 4000
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to auto-fill price:", error);
+      // Silently fail or minimal warning, don't block user
+    }
   };
 
   const resetForm = () => {
@@ -176,26 +222,26 @@ export default function ProductManager() {
   const addProduct = async (e) => {
     e.preventDefault();
     setError("");
-    
+
     // Client-side validation
     const price = Number(form.price);
     const stock = Number(form.stock);
-    
+
     if (!form.name.trim()) {
       setError("Product name is required");
       return;
     }
-    
+
     if (isNaN(price) || price <= 0) {
       setError("Price must be a positive number greater than ₹0");
       return;
     }
-    
+
     if (isNaN(stock) || stock < 1 || stock > 20 || !Number.isInteger(stock)) {
       setError("Stock must be between 1-20 kg (whole number)");
       return;
     }
-    
+
     setAdding(true);
     try {
       // Use multipart/form-data when a file is selected
@@ -235,7 +281,7 @@ export default function ProductManager() {
 
       setProducts((list) => [created, ...list]);
       resetForm();
-      
+
       // Show success notification
       addNotification(notificationTemplates.productAdded(form.name));
     } catch (e) {
@@ -270,8 +316,8 @@ export default function ProductManager() {
       <div className="card-header">
         <h3>
           {showBulkManager ? "Bulk Product Management" :
-           showForm ? "Add Domestic Product" :
-           "Add Product"}
+            showForm ? "Add Domestic Product" :
+              "Add Product"}
         </h3>
         {showForm && (
           <button className="btn-ghost" onClick={() => setShowForm(false)}>
@@ -302,120 +348,120 @@ export default function ProductManager() {
               </div>
             </div>
 
-        <div className="pm-grid">
-          {/* Form */}
-          <form onSubmit={addProduct} className="pm-form">
-            <div className="pm-field">
-              <label>Product Name</label>
-              <input name="name" value={form.name} onChange={handleChange} required />
-            </div>
-            <div className="pm-field">
-              <label>Price (₹/kg)</label>
-              <input type="number" name="price" value={form.price} onChange={handleChange} min="0.01" step="0.01" required />
-              <small style={{ color: '#666', fontSize: '12px' }}>Must be greater than ₹0</small>
-            </div>
-            <div className="pm-field">
-              <label>Stock (kg)</label>
-              <input type="number" name="stock" value={form.stock} onChange={handleChange} min="1" max="20" step="1" required />
-              <small style={{ color: '#666', fontSize: '12px' }}>Must be between 1-20 kg</small>
-            </div>
-            <div className="pm-field">
-              <label>Grade</label>
-              <select name="grade" value={form.grade} onChange={handleChange}>
-                <option>Premium</option>
-                <option>Organic</option>
-                <option>Regular</option>
-              </select>
-            </div>
-            <div className="pm-field">
-              <label>State</label>
-              <select name="state" value={form.state} onChange={handleChange}>
-                <option value="">Select State</option>
-                {states.map(state => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-            </div>
-            <div className="pm-field">
-              <label>District</label>
-              <select name="district" value={form.district} onChange={handleChange} disabled={!form.state}>
-                <option value="">Select District</option>
-                {districts.map(district => (
-                  <option key={district} value={district}>{district}</option>
-                ))}
-              </select>
-            </div>
-            <div className="pm-field pm-col-span-2">
-              <label>Nearest Hub</label>
-              <select 
-                name="nearestHub" 
-                value={form.nearestHub} 
-                onChange={handleChange}
-                disabled={!form.district || loadingHubs}
-              >
-                <option value="">
-                  {!form.district ? 'Select District First' : 
-                   loadingHubs ? 'Loading Hubs...' : 
-                   hubs.length === 0 ? 'No Hubs Available in This District' : 
-                   'Select Nearest Hub'}
-                </option>
-                {hubs.map(hub => (
-                  <option key={hub._id} value={hub.name}>
-                    {hub.name} - {hub.address}
-                  </option>
-                ))}
-              </select>
-              {form.district && hubs.length === 0 && !loadingHubs && (
-                <small style={{ color: '#ff9800', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                  No registered hubs found in {form.district}. You can still add your product.
-                </small>
-              )}
-            </div>
-            <div className="pm-field pm-col-span-2">
-              <label>Image (upload from device)</label>
-              <input type="file" accept="image/*" onChange={handleFileChange} />
-              <div style={{ fontSize: 12, color: '#607d8b', marginTop: 4 }}>Or paste an image URL below (optional)</div>
-              <input name="image" value={form.image} onChange={handleChange} placeholder="https://..." />
-            </div>
-            <div className="pm-field pm-col-span-2">
-              <label>Description</label>
-              <textarea name="description" value={form.description} onChange={handleChange} placeholder="Describe your cardamom quality, aroma, harvest details..." />
-            </div>
-            <div className="pm-actions pm-col-span-2">
-              <button className="btn-primary" type="submit" disabled={adding}>{adding ? "Adding..." : "Add Product"}</button>
-              <button className="btn-ghost" type="button" onClick={resetForm}>Reset</button>
-            </div>
-            {error && <div className="pm-col-span-2" style={{ color: '#c62828', fontSize: 13 }}>{error}</div>}
-          </form>
+            <div className="pm-grid">
+              {/* Form */}
+              <form onSubmit={addProduct} className="pm-form">
+                <div className="pm-field">
+                  <label>Product Name</label>
+                  <input name="name" value={form.name} onChange={handleChange} required />
+                </div>
+                <div className="pm-field">
+                  <label>Price (₹/kg)</label>
+                  <input type="number" name="price" value={form.price} onChange={handleChange} min="0.01" step="0.01" required />
+                  <small style={{ color: '#666', fontSize: '12px' }}>Must be greater than ₹0</small>
+                </div>
+                <div className="pm-field">
+                  <label>Stock (kg)</label>
+                  <input type="number" name="stock" value={form.stock} onChange={handleChange} min="1" max="20" step="1" required />
+                  <small style={{ color: '#666', fontSize: '12px' }}>Must be between 1-20 kg</small>
+                </div>
+                <div className="pm-field">
+                  <label>Grade</label>
+                  <select name="grade" value={form.grade} onChange={handleChange}>
+                    <option>Premium</option>
+                    <option>Organic</option>
+                    <option>Regular</option>
+                  </select>
+                </div>
+                <div className="pm-field">
+                  <label>State</label>
+                  <select name="state" value={form.state} onChange={handleChange}>
+                    <option value="">Select State</option>
+                    {states.map(state => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="pm-field">
+                  <label>District</label>
+                  <select name="district" value={form.district} onChange={handleChange} disabled={!form.state}>
+                    <option value="">Select District</option>
+                    {districts.map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="pm-field pm-col-span-2">
+                  <label>Nearest Hub</label>
+                  <select
+                    name="nearestHub"
+                    value={form.nearestHub}
+                    onChange={handleChange}
+                    disabled={!form.district || loadingHubs}
+                  >
+                    <option value="">
+                      {!form.district ? 'Select District First' :
+                        loadingHubs ? 'Loading Hubs...' :
+                          hubs.length === 0 ? 'No Hubs Available in This District' :
+                            'Select Nearest Hub'}
+                    </option>
+                    {hubs.map(hub => (
+                      <option key={hub._id} value={hub.name}>
+                        {hub.name} - {hub.address}
+                      </option>
+                    ))}
+                  </select>
+                  {form.district && hubs.length === 0 && !loadingHubs && (
+                    <small style={{ color: '#ff9800', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                      No registered hubs found in {form.district}. You can still add your product.
+                    </small>
+                  )}
+                </div>
+                <div className="pm-field pm-col-span-2">
+                  <label>Image (upload from device)</label>
+                  <input type="file" accept="image/*" onChange={handleFileChange} />
+                  <div style={{ fontSize: 12, color: '#607d8b', marginTop: 4 }}>Or paste an image URL below (optional)</div>
+                  <input name="image" value={form.image} onChange={handleChange} placeholder="https://..." />
+                </div>
+                <div className="pm-field pm-col-span-2">
+                  <label>Description</label>
+                  <textarea name="description" value={form.description} onChange={handleChange} placeholder="Describe your cardamom quality, aroma, harvest details..." />
+                </div>
+                <div className="pm-actions pm-col-span-2">
+                  <button className="btn-primary" type="submit" disabled={adding}>{adding ? "Adding..." : "Add Product"}</button>
+                  <button className="btn-ghost" type="button" onClick={resetForm}>Reset</button>
+                </div>
+                {error && <div className="pm-col-span-2" style={{ color: '#c62828', fontSize: 13 }}>{error}</div>}
+              </form>
 
-          {/* Live preview */}
-          <div className="pm-right">
-            <h4 className="pm-right-title">Live Preview</h4>
-            <div className="pm-preview-card">
-              <div className="pm-preview-image">
-                {previewUrl ? (
-                  <img src={previewUrl} alt={form.name || 'Product'} />
-                ) : form.image ? (
-                  <img src={form.image} alt={form.name || 'Product'} />
-                ) : (
-                  <div className="empty-img">📦</div>
-                )}
-              </div>
-              <div className="pm-preview-details">
-                <h3>{form.name || 'Product Name'}</h3>
-                <p className="pm-preview-price">₹{form.price || 0}/kg · {form.stock || 0} kg · {form.grade}</p>
-                {(form.state || form.district || form.nearestHub) && (
-                  <p className="pm-preview-meta">
-                    {form.state && form.district ? <>📍 {form.district}, {form.state}</> : form.state ? <>📍 {form.state}</> : null}
-                    {form.nearestHub ? <> · 🏪 {form.nearestHub}</> : null}
-                  </p>
-                )}
-                {form.description && <p className="pm-preview-desc">{form.description}</p>}
+              {/* Live preview */}
+              <div className="pm-right">
+                <h4 className="pm-right-title">Live Preview</h4>
+                <div className="pm-preview-card">
+                  <div className="pm-preview-image">
+                    {previewUrl ? (
+                      <img src={previewUrl} alt={form.name || 'Product'} />
+                    ) : form.image ? (
+                      <img src={form.image} alt={form.name || 'Product'} />
+                    ) : (
+                      <div className="empty-img">📦</div>
+                    )}
+                  </div>
+                  <div className="pm-preview-details">
+                    <h3>{form.name || 'Product Name'}</h3>
+                    <p className="pm-preview-price">₹{form.price || 0}/kg · {form.stock || 0} kg · {form.grade}</p>
+                    {(form.state || form.district || form.nearestHub) && (
+                      <p className="pm-preview-meta">
+                        {form.state && form.district ? <>📍 {form.district}, {form.state}</> : form.state ? <>📍 {form.state}</> : null}
+                        {form.nearestHub ? <> · 🏪 {form.nearestHub}</> : null}
+                      </p>
+                    )}
+                    {form.description && <p className="pm-preview-desc">{form.description}</p>}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        </>
+          </>
         ) : (
           <div className="pm-empty-state">
             <div className="empty-state-content">

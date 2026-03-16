@@ -3,7 +3,6 @@
  */
 import fs from 'fs';
 import exif from 'exif-reader';
-import sharp from 'sharp';
 
 /**
  * Simple heuristic to detect if an image contains cardamom pods
@@ -12,6 +11,15 @@ import sharp from 'sharp';
  */
 export const detectCardamomImage = async (filePath) => {
   try {
+    // Dynamically load sharp to prevent Vercel startup crashes if binary is missing
+    let sharp;
+    try {
+      sharp = (await import('sharp')).default;
+    } catch (e) {
+      console.warn("Sharp module not found, skipping image analysis.");
+      return { isCardamom: false, confidence: 0.1 };
+    }
+
     // Resize image for faster processing
     const resizedBuffer = await sharp(filePath)
       .resize(256, 256, { fit: 'inside' })

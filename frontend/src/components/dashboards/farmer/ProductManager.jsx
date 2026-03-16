@@ -9,6 +9,7 @@ import BulkProductManager from "./BulkProductManager";
 import "../../../css/CardamomComponents.css";
 import "../../../css/FarmerComponents.css";
 import { validateFarmerProductImage } from "../../../utils/imageValidation";
+import { analyzeImageHeuristic, calculateImagePrice } from "../../../utils/imageGrading";
 
 // Manage products to sell (persisted in database)
 export default function ProductManager() {
@@ -133,6 +134,8 @@ export default function ProductManager() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
+        // Auto-fill price based on image grading and market data
+        fetchAndSetMarketPrice(file);
       };
       reader.readAsDataURL(file);
     }).catch(err => {
@@ -144,54 +147,76 @@ export default function ProductManager() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result);
+        // Auto-fill price based on image grading and market data
+        fetchAndSetMarketPrice(file);
       };
       reader.readAsDataURL(file);
-
-      // Auto-fill price based on market data
-      fetchAndSetMarketPrice();
     });
   };
 
-  const fetchAndSetMarketPrice = async () => {
+  const fetchAndSetMarketPrice = async (fileObj) => {
     try {
       addNotification({
         type: 'info',
-        title: 'Analyzing Market',
-        message: 'Fetching latest market prices based on image...',
-        icon: '📊',
-        duration: 2000
+        title: 'Analyzing Quality',
+        message: 'Grading cardamom image and fetching optimal market price...',
+        icon: '🔍',
+        duration: 3000
       });
 
+      // 1. Get market data
       const response = await getCardamomPrices();
-
+      let marketData = null;
       if (response && response.success && response.data && response.data.length > 0) {
-        // Get the latest available price (usually first row)
-        // We use avg_price for a fair suggestion
-        const marketData = response.data[0];
-        const avgPriceStr = marketData.avg_price;
+        marketData = response.data[0];
+      }
 
-        // Parse "Rs. 1,200.00" or "1200.00"
-        const cleanPrice = avgPriceStr.replace(/[^\d.]/g, '');
-        const price = parseFloat(cleanPrice);
+      // 2. Grade the image
+      const imageGradeObj = await analyzeImageHeuristic(fileObj);
+      
+      if (!imageGradeObj.isCardamom) {
+        addNotification({
+          type: 'warning',
+          title: 'Not Cardamom Detected',
+          message: 'This image does not appear to be cardamom. Price auto-fill skipped.',
+          icon: '⚠️',
+          duration: 5000
+        });
+        return;
+      }
 
-        if (!isNaN(price) && price > 0) {
+      // 3. Calculate accurate price using both grade and market data
+      if (marketData) {
+        const calculatedPrice = calculateImagePrice(imageGradeObj, marketData);
+        
+        if (calculatedPrice > 0) {
           setForm(prev => ({
             ...prev,
-            price: price.toFixed(2)
+            price: calculatedPrice.toString(),
+            grade: imageGradeObj.quality
           }));
 
           addNotification({
             type: 'success',
-            title: 'Price Auto-filled',
-            message: `Set to ₹${price.toFixed(2)} based on latest market average.`,
+            title: 'Auto-filled Grade & Price',
+            message: `Graded as ${imageGradeObj.quality}. Price set to ₹${calculatedPrice}/kg based on quality score and current market rates.`,
             icon: '💰',
-            duration: 4000
+            duration: 5000
           });
         }
+      } else {
+        addNotification({
+          type: 'warning',
+          title: 'Market Data Unavailable',
+          message: `Image graded as ${imageGradeObj.quality}, but market prices could not be fetched.`,
+          icon: '📉',
+          duration: 3000
+        });
+        setForm(prev => ({ ...prev, grade: imageGradeObj.quality }));
       }
     } catch (error) {
       console.error("Failed to auto-fill price:", error);
-      // Silently fail or minimal warning, don't block user
+      // Minimal warning, don't block user
     }
   };
 

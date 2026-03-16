@@ -3,7 +3,10 @@ import axios from 'axios';
 // Normalize base URL: ensure it includes "/api" and no trailing slash issues
 const RAW_URL = import.meta.env.VITE_API_URL;
 const API_URL = (() => {
-  const def = 'http://localhost:5000/api';
+  // If we are on a hosted site (not localhost), strictly default to the Vercel backend
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const def = isLocalhost ? 'http://localhost:5000/api' : 'https://main-projects-xi.vercel.app/api';
+  
   if (!RAW_URL) return def;
   const trimmed = RAW_URL.replace(/\/+$/, '');
   return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;

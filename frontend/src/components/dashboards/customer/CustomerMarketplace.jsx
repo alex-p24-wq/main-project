@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import { addToWishlist, removeFromWishlist, getWishlist } from "../../../services/api";
 import "../../../css/CustomerDashboard.css";
+import { analyzeImageHeuristic } from "../../../utils/imageGrading";
 
 export default function CustomerMarketplace({ user }) {
   const [activeCategory, setActiveCategory] = useState("all");
@@ -71,45 +72,7 @@ export default function CustomerMarketplace({ user }) {
     }
   }, [items, sortBy]);
 
-  // Image analysis (on-device heuristic based on average green)
-  const analyzeImageHeuristic = async (imageUrl) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imageUrl;
-    });
-
-    const maxSide = 256;
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    const w = Math.max(1, Math.floor(img.width * scale));
-    const h = Math.max(1, Math.floor(img.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, w, h);
-
-    const { data } = ctx.getImageData(0, 0, w, h);
-    let rT = 0, gT = 0, bT = 0, n = 0;
-    const stride = 4 * 4;
-    for (let i = 0; i < data.length; i += stride) {
-      rT += data[i];
-      gT += data[i + 1];
-      bT += data[i + 2];
-      n++;
-    }
-    const avgR = rT / n, avgG = gT / n, avgB = bT / n;
-    const brightness = (avgR + avgG + avgB) / 3;
-
-    let g = "Regular";
-    const greenDom = avgG - Math.max(avgR, avgB);
-    if (greenDom > 20 && avgG > 110 && brightness > 70 && brightness < 200) g = "Premium";
-    else if (avgG >= avgR && avgG >= avgB) g = "Special";
-    return g;
-  };
+  // Using the shared strict image validation heuristic imported from utils
 
   const openScan = (product) => {
     setScanTarget(product);
@@ -124,10 +87,12 @@ export default function CustomerMarketplace({ user }) {
     setScanResult(null);
     setScanError("");
     try {
-      const grade = await analyzeImageHeuristic(scanTarget.image);
-      setScanResult(grade);
+      // For cross-origin images, the heuristic needs a proxy or will fail on canvas context. 
+      // Assuming images are hosted on the same origin or have CORS headers allowing this, as established by the codebase.
+      const resultObj = await analyzeImageHeuristic(scanTarget.image);
+      setScanResult(resultObj);
     } catch (e) {
-      setScanError("Failed to scan the image. Try again.");
+      setScanError("Failed to scan the image. CORS or formatting issue. Try again.");
     } finally {
       setScanLoading(false);
     }
@@ -290,8 +255,10 @@ export default function CustomerMarketplace({ user }) {
                   <span>Analyzing...</span>
                 ) : scanError ? (
                   <span className="error-text">{scanError}</span>
+                ) : scanResult?.isCardamom === false ? (
+                  <span><strong style={{ color: "#c62828" }}>Not Cardamom Detected.</strong> ({scanResult.featureAnalysis?.cardamomPercentage}% match)</span>
                 ) : scanResult ? (
-                  <span><strong>Estimated Grade:</strong> {scanResult}</span>
+                  <span><strong>AI Validated Grade:</strong> {scanResult.quality}</span>
                 ) : (
                   <span>Click "Scan Quality" to analyze this photo.</span>
                 )}

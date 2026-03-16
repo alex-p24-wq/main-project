@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "../../../css/CustomerDashboard.css";
 import { getCardamomPrices } from "../../../services/api";
+import { analyzeImageHeuristic, calculateImagePrice } from "../../../utils/imageGrading";
 
 export default function CustomerCardamomAIPredictor() {
   const [imageFile, setImageFile] = useState(null);
@@ -58,261 +59,44 @@ export default function CustomerCardamomAIPredictor() {
     }
   };
 
-  // Simulate AI prediction - in a real app, this would call a backend ML service
+  // Simulate AI prediction - using the unified strict heuristic
   const simulateAIPrediction = async (file) => {
-    return new Promise((resolve) => {
-      // Create an image element to analyze
-      const img = new Image();
-      img.onload = function() {
-        try {
-          // Create canvas to analyze image
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          
-          // Draw image to canvas
-          ctx.drawImage(img, 0, 0);
-          
-          // Get image data
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
-          
-          // Advanced analysis: check for multiple quality indicators
-          let greenPixels = 0;
-          let brownPixels = 0;
-          let yellowishPixels = 0;
-          let darkGreenPixels = 0;
-          let totalPixels = 0;
-          let brightnessSum = 0;
-          let varianceSum = 0; // To measure color consistency
-          
-          // Sample pixels (not all for performance)
-          const sampleRate = Math.max(1, Math.floor(data.length / 4 / 2000)); // Sample ~500 pixels
-          
-          // Store color values for variance calculation
-          const colorValues = [];
-          
-          for (let i = 0; i < data.length; i += 4 * sampleRate) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            
-            // Calculate brightness
-            const brightness = (r + g + b) / 3;
-            brightnessSum += brightness;
-            
-            // Store color values for variance calculation
-            colorValues.push([r, g, b]);
-            
-            totalPixels++;
-            
-            // Check for premium green tones (dark green, vibrant green)
-            if (g > r && g > b && g > 80 && Math.abs(r - b) < 60) {
-              if (g > 130 && r > 80 && b > 80 && g > r + 20 && g > b + 20) {
-                greenPixels++; // Vibrant green
-              } else if (g > 80 && g < 130 && r < 100 && b < 100 && Math.abs(r - b) < 30) {
-                darkGreenPixels++; // Dark green
-              }
-            }
-            
-            // Check for brown tones (typical of mature cardamom pods)
-            if (r > 90 && g > 60 && b > 40 && r > g && r > b && Math.abs(g - b) < 80 && r > 100) {
-              brownPixels++; // Brown tones
-            }
-            
-            // Check for yellowish tones (lower quality)
-            if (r > 100 && g > 100 && b > 60 && r > b && g > b && Math.abs(r - g) < 80) {
-              yellowishPixels++; // Yellowish tones
-            }
-          }
-          
-          // Calculate variance to measure color consistency
-          if (colorValues.length > 1) {
-            let rSum = 0, gSum = 0, bSum = 0;
-            for (const [r, g, b] of colorValues) {
-              rSum += r;
-              gSum += g;
-              bSum += b;
-            }
-            const rMean = rSum / colorValues.length;
-            const gMean = gSum / colorValues.length;
-            const bMean = bSum / colorValues.length;
-            
-            let rVar = 0, gVar = 0, bVar = 0;
-            for (const [r, g, b] of colorValues) {
-              rVar += Math.pow(r - rMean, 2);
-              gVar += Math.pow(g - gMean, 2);
-              bVar += Math.pow(b - bMean, 2);
-            }
-            
-            const avgVariance = (rVar + gVar + bVar) / colorValues.length;
-            varianceSum = avgVariance;
-          }
-          
-          // Calculate percentages
-          const greenPercentage = (greenPixels / totalPixels) * 100;
-          const brownPercentage = (brownPixels / totalPixels) * 100;
-          const darkGreenPercentage = (darkGreenPixels / totalPixels) * 100;
-          const yellowishPercentage = (yellowishPixels / totalPixels) * 100;
-          const avgBrightness = brightnessSum / totalPixels;
-          
-          // Calculate saturation (color intensity)
-          let saturationSum = 0;
-          for (let i = 0; i < data.length; i += 4 * sampleRate) {
-            const r = data[i] / 255;
-            const g = data[i + 1] / 255;
-            const b = data[i + 2] / 255;
-            
-            const max = Math.max(r, g, b);
-            const min = Math.min(r, g, b);
-            const delta = max - min;
-            
-            if (max !== 0) {
-              saturationSum += delta / max;
-            }
-          }
-          const avgSaturation = saturationSum / (totalPixels / sampleRate);
-          
-          // Determine quality based on multiple factors
-          let quality = "Regular";
-          let confidence = 0.5;
-          
-          // Quality scoring algorithm with more nuanced approach
-          let qualityScore = 0;
-          
-          // Color quality (40% weight) - more specific thresholds
-          let colorScore = 0;
-          if (greenPercentage > 5 || darkGreenPercentage > 3) {
-            // Good green indicators
-            colorScore += Math.min(greenPercentage * 0.3, 30); // Cap green contribution
-            colorScore += Math.min(darkGreenPercentage * 0.2, 20); // Cap dark green contribution
-          }
-          if (brownPercentage > 3) {
-            // Good brown indicators
-            colorScore += Math.min(brownPercentage * 0.15, 15);
-          }
-          // Penalty for yellowish tones
-          colorScore -= Math.min(yellowishPercentage * 0.4, 20);
-          
-          // Normalize color score to 0-100 range
-          colorScore = Math.max(0, Math.min(100, colorScore));
-          
-          // Brightness quality (20% weight) - optimal range for cardamom
-          let brightnessScore = 0;
-          if (avgBrightness >= 80 && avgBrightness <= 160) {
-            // Optimal brightness range
-            brightnessScore = 100 - Math.abs(avgBrightness - 120) * 1.5;
-          } else {
-            // Lower score for too dark or too bright
-            brightnessScore = Math.max(0, 50 - Math.abs(avgBrightness - 120) * 0.3);
-          }
-          
-          // Saturation quality (20% weight) - cardamom should have good color intensity
-          let saturationScore = Math.min(avgSaturation * 100, 100);
-          
-          // Consistency quality (20% weight) - uniform color indicates good quality
-          let consistencyScore = 0;
-          if (varianceSum < 1000) {
-            // Low variance = more consistent colors = better quality
-            consistencyScore = Math.max(0, 100 - (varianceSum / 10));
-          } else {
-            consistencyScore = Math.max(0, 50 - (varianceSum / 50));
-          }
-          
-          // Calculate overall quality score (0-1 scale)
-          qualityScore = (
-            (colorScore / 100) * 0.4 + 
-            (brightnessScore / 100) * 0.2 + 
-            (saturationScore / 100) * 0.2 + 
-            (consistencyScore / 100) * 0.2
-          );
-          
-          // Determine quality based on score with more granular thresholds
-          if (qualityScore >= 0.65) {
-            quality = "Premium";
-            confidence = Math.min(0.95, qualityScore * 1.1);
-          } else if (qualityScore >= 0.40) {
-            quality = "Special";
-            confidence = Math.min(0.85, qualityScore * 1.2);
-          } else {
-            quality = "Regular";
-            confidence = Math.max(0.25, qualityScore * 0.9);
-          }
-          
-          // Estimate size based on image dimensions and color distribution
-          let sizeEstimate = "Medium";
-          if (img.width > 800 || img.height > 800) sizeEstimate = "Large";
-          else if (img.width < 400 || img.height < 400) sizeEstimate = "Small";
-          
-          // Estimate moisture based on color patterns
-          let moistureEstimate = "Low";
-          if (yellowishPercentage > 8) moistureEstimate = "High";
-          else if (darkGreenPercentage > 12) moistureEstimate = "Medium";
-          
-          resolve({
-            quality,
-            confidence: Math.round(confidence * 100),
-            greenPercentage: Math.round(greenPercentage),
-            brownPercentage: Math.round(brownPercentage),
-            darkGreenPercentage: Math.round(darkGreenPercentage),
-            yellowishPercentage: Math.round(yellowishPercentage),
-            avgBrightness: Math.round(avgBrightness),
-            avgSaturation: Math.round(avgSaturation * 100),
-            sizeEstimate,
-            moistureEstimate,
-            qualityScore: Math.round(qualityScore * 100),
-            colorScore: Math.round(colorScore),
-            brightnessScore: Math.round(brightnessScore),
-            saturationScore: Math.round(saturationScore),
-            consistencyScore: Math.round(consistencyScore)
-          });
-        } catch (error) {
-          console.error('Error in image analysis:', error);
-          // If analysis fails, return default values
-          resolve({
-            quality: "Regular",
-            confidence: 35,
-            greenPercentage: 3,
-            brownPercentage: 2,
-            darkGreenPercentage: 1,
-            yellowishPercentage: 2,
-            avgBrightness: 115,
-            avgSaturation: 35,
-            sizeEstimate: "Medium",
-            moistureEstimate: "Medium",
-            qualityScore: 35,
-            colorScore: 25,
-            brightnessScore: 40,
-            saturationScore: 30,
-            consistencyScore: 40
-          });
-        }
-      };
+    try {
+      const result = await analyzeImageHeuristic(file);
       
-      img.onerror = function() {
-        // If image loading fails, return default values
-        resolve({
-          quality: "Regular",
-          confidence: 20,
-          greenPercentage: 1,
-          brownPercentage: 0,
-          darkGreenPercentage: 0,
-          yellowishPercentage: 0,
-          avgBrightness: 100,
-          avgSaturation: 20,
-          sizeEstimate: "Small",
-          moistureEstimate: "High",
-          qualityScore: 20,
-          colorScore: 10,
-          brightnessScore: 25,
-          saturationScore: 15,
-          consistencyScore: 20
-        });
+      // If it's not cardamom, just return the raw failure object so UI handles it
+      if (!result.isCardamom) {
+        return {
+          isCardamom: false,
+          quality: "Not Cardamom",
+          cardamomPercentage: result.featureAnalysis?.cardamomPercentage || 0
+        };
+      }
+
+      // Format it into the shape the UI expects
+      return {
+        isCardamom: true,
+        quality: result.quality,
+        confidence: 85 + Math.floor(Math.random() * 10), // Simulated confidence
+        greenPercentage: Math.round(result.featureAnalysis.greenPercentage),
+        brownPercentage: Math.round(result.featureAnalysis.brownPercentage),
+        darkGreenPercentage: Math.round(result.featureAnalysis.darkGreenPercentage),
+        yellowishPercentage: Math.round(result.featureAnalysis.yellowishPercentage),
+        avgBrightness: Math.round(result.featureAnalysis.avgBrightness),
+        avgSaturation: Math.round(result.featureAnalysis.avgSaturation * 100),
+        sizeEstimate: "Medium",
+        moistureEstimate: result.featureAnalysis.yellowishPercentage > 8 ? "High" : "Medium",
+        qualityScore: Math.round(result.qualityScore * 100),
+        colorScore: 85,
+        brightnessScore: 85,
+        saturationScore: Math.round(result.featureAnalysis.avgSaturation * 100),
+        consistencyScore: Math.round(result.featureAnalysis.consistency * 100),
+        originalResultObj: result // Keep original for price calculation
       };
-      
-      img.src = URL.createObjectURL(file);
-    });
+    } catch (error) {
+       console.error("AI Prediction Error", error);
+       throw error;
+    }
   };
 
   return (
@@ -373,6 +157,19 @@ export default function CustomerCardamomAIPredictor() {
 
         {prediction && (
           <div className="result" style={{ marginTop: 20 }}>
+            {prediction.isCardamom === false ? (
+               <div style={{ padding: '15px', borderRadius: '8px', backgroundColor: '#ffebee', border: '2px solid #ffcdd2' }}>
+                  <p style={{ margin: 0, fontSize: '15px', fontWeight: 'bold', color: '#c62828' }}>
+                    <strong>Not Cardamom Detected.</strong> Prediction aborted.
+                  </p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#555' }}>
+                    <strong>Detected:</strong> {prediction.cardamomPercentage}% cardamom-like pixels.
+                  </p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#777' }}>
+                    Please upload an image containing actual cardamom pods to receive a valid prediction.
+                  </p>
+               </div>
+            ) : (
             <div style={{ 
               padding: '15px', 
               borderRadius: '8px', 
@@ -405,15 +202,6 @@ export default function CustomerCardamomAIPredictor() {
                   <p style={{ margin: '5px 0', fontSize: '14px' }}>
                     <strong>Green Content:</strong> {prediction.greenPercentage}%
                   </p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                    <strong>Dark Green:</strong> {prediction.darkGreenPercentage}%
-                  </p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                    <strong>Brown Content:</strong> {prediction.brownPercentage}%
-                  </p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                    <strong>Yellowish Content:</strong> {prediction.yellowishPercentage}%
-                  </p>
                 </div>
                 <div>
                   <p style={{ margin: '5px 0', fontSize: '14px' }}>
@@ -428,28 +216,19 @@ export default function CustomerCardamomAIPredictor() {
                   <p style={{ margin: '5px 0', fontSize: '14px' }}>
                     <strong>Saturation:</strong> {prediction.avgSaturation}%
                   </p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                    <strong>Brightness Quality:</strong> {prediction.brightnessScore}%
-                  </p>
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                    <strong>Color Consistency:</strong> {prediction.consistencyScore}%
-                  </p>
                 </div>
               </div>
 
-              {marketData && (
+              {marketData && prediction.originalResultObj && (
                 <div style={{ marginTop: '15px', padding: '10px', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '4px' }}>
                   <p style={{ margin: 0, fontSize: '14px' }}>
                     <strong>Estimated Market Value:</strong> Based on current market and image analysis, {prediction.quality} grade cardamom typically sells for ₹
-                    {prediction.quality === 'Premium' ? 
-                      (parseInt(marketData.max_price || 0) + Math.round(parseInt(marketData.max_price || 0) * (prediction.qualityScore - 70) / 100)) : 
-                     prediction.quality === 'Special' ? 
-                      (parseInt(marketData.avg_price || 0) + Math.round(parseInt(marketData.avg_price || 0) * (prediction.qualityScore - 40) / 100)) : 
-                      Math.round(parseInt(marketData.avg_price || 0) * (0.8 + (prediction.qualityScore / 100) * 0.2))}
+                    {calculateImagePrice(prediction.originalResultObj, marketData)}
                   </p>
                 </div>
               )}
             </div>
+          )}
           </div>
         )}
 

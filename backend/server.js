@@ -15,34 +15,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [
-    process.env.FRONTEND_URL || 'https://main-project-qqxu.onrender.com',
-    'https://main-project-qqxu.onrender.com', // Render hosted frontend
-    'http://localhost:5173', // Allow local development
-    'http://localhost:5174', // Alternative local port
-    'http://localhost:5175', // Alternative local port
-    'http://localhost:5176', // Alternative local port
-    'http://localhost:5177', // Alternative local port
-    'http://localhost:3000'
-  ]
-  : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:5177', 'https://main-project-qqxu.onrender.com'];
-
+// We are allowing all origins here to completely bypass CORS issues between Render and Vercel
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`⚠️ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-App-Check']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-App-Check', 'Accept']
 };
 app.use(cors(corsOptions));
 // Handle CORS preflight for all routes

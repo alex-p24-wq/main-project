@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Normalize base URL: ensure it includes "/api" and no trailing slash issues
-const RAW_URL = import.meta?.env?.VITE_API_URL;
+const RAW_URL = import.meta.env.VITE_API_URL;
 const API_URL = (() => {
   const def = 'http://localhost:5000/api';
   if (!RAW_URL) return def;

@@ -141,6 +141,10 @@ const connectDB = async () => {
   }
 
   try {
+    if (!process.env.MONGO_URI) {
+      console.warn('⚠️ MONGO_URI is not defined. Skipping database connection.');
+      return;
+    }
     await mongoose.connect(process.env.MONGO_URI);
     isConnected = true;
     console.log('✅ Connected to MongoDB');

@@ -51,16 +51,16 @@ export const analyzeImageHeuristic = async (fileOrUrl) => {
     // Pure vibrant greens (like green peas or fresh leaves) MUST be filtered out.
 
     const isGreenCardamom = 
-      g > r && g > b && 
-      (g - b) > 20 && (g - b) < 90 && // Can't be pure blue/grey, but also not overwhelmingly green vs blue
-      (g - r) > 5 && (g - r) < 70 &&  // Can't be pure red, but also not purely neon green vs red
-      g > 40 && g < 220; // Not pitch black, not blown out pure white
+      g >= r && g > b && 
+      (g - b) > 15 && (g - b) < 100 && // Slightly wider blue allowance
+      (g - r) >= 0 && (g - r) < 80 &&  // Cover the gap! Anything from g=r to g=r+80
+      g > 30 && g < 240; // Expand brightness scope for flash photography lighting
     
     // Yellowish/Mature Cardamom
     const isYellowCardamom = 
-      r >= g && (r - g) < 45 && 
-      (g - b) > 20 && 
-      g > 40 && r < 230;
+      r > g && (r - g) < 55 && 
+      (g - b) > 15 && 
+      g > 30 && r < 240;
 
     // Filter out highly saturated/neon greens (like green peas, toys, grass)
     // In HSL, Cardamom is a low-saturation pale green/yellow.
@@ -199,9 +199,9 @@ export const analyzeImageHeuristic = async (fileOrUrl) => {
 
   const cardamomPercentage = (cardamomPixelCount / totalPixels) * 100;
   
-  // Stricter checking: if cardiovascular score is too low, reject immediately
-  // Also check if the image has too high overall saturation (meaning it's a vibrant non-cardamom object)
-  if (cardamomPercentage < 25 || avgSaturation > 0.60) {
+  // Stricter checking: if cardamom score is too low, reject immediately
+  // We allow as low as 12% to account for packed cardamom in large plastic bags or images with large labels/backgrounds.
+  if (cardamomPercentage < 12 || avgSaturation > 0.75) {
     return { 
       quality: "Not Cardamom", 
       qualityScore: 0, 

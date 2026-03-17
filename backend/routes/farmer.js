@@ -47,8 +47,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get latest cardamom prices
-router.get('/cardamom-prices', requireAuth, requireRole('farmer'), async (req, res) => {
+// Get latest cardamom prices (made public to prevent auth blockers)
+router.get('/cardamom-prices', async (req, res) => {
   try {
     const prices = await getLatestCardamomPrice();
     

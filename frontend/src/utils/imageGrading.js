@@ -47,13 +47,30 @@ export const analyzeImageHeuristic = async (fileOrUrl) => {
     totalPixels++;
 
     // STRICT CARDAMOM DETECTION
-    // Green Cardamom: Green is dominant. Blue is significantly lower than Green (eliminates greys/silvers).
-    const isGreenCardamom = g > r && g > b && (g - b) > 25 && g > 40;
-    
-    // Yellowish/Mature Cardamom: Red might slightly overtake green, but blue remains low.
-    const isYellowCardamom = r >= g && (r - g) < 45 && (g - b) > 25 && g > 40;
+    // Cardamom has a very specific muted/desaturated green or yellow hue. 
+    // Pure vibrant greens (like green peas or fresh leaves) MUST be filtered out.
 
-    if (isGreenCardamom || isYellowCardamom) {
+    const isGreenCardamom = 
+      g > r && g > b && 
+      (g - b) > 20 && (g - b) < 90 && // Can't be pure blue/grey, but also not overwhelmingly green vs blue
+      (g - r) > 5 && (g - r) < 70 &&  // Can't be pure red, but also not purely neon green vs red
+      g > 40 && g < 220; // Not pitch black, not blown out pure white
+    
+    // Yellowish/Mature Cardamom
+    const isYellowCardamom = 
+      r >= g && (r - g) < 45 && 
+      (g - b) > 20 && 
+      g > 40 && r < 230;
+
+    // Filter out highly saturated/neon greens (like green peas, toys, grass)
+    // In HSL, Cardamom is a low-saturation pale green/yellow.
+    let maxColor = Math.max(r, g, b);
+    let minColor = Math.min(r, g, b);
+    let saturationRaw = (maxColor === 0) ? 0 : (maxColor - minColor) / maxColor;
+    
+    const isTooVibrant = saturationRaw > 0.65 && g > 150 && r < 100; // Neon/vibrant green check
+
+    if ((isGreenCardamom || isYellowCardamom) && !isTooVibrant) {
       cardamomPixelCount++;
     }
 
@@ -182,8 +199,18 @@ export const analyzeImageHeuristic = async (fileOrUrl) => {
 
   const cardamomPercentage = (cardamomPixelCount / totalPixels) * 100;
   
-  if (cardamomPercentage < 20) {
-    return { quality: "Not Cardamom", qualityScore: 0, isCardamom: false, featureAnalysis: { cardamomPercentage: parseFloat(cardamomPercentage.toFixed(2)) } };
+  // Stricter checking: if cardiovascular score is too low, reject immediately
+  // Also check if the image has too high overall saturation (meaning it's a vibrant non-cardamom object)
+  if (cardamomPercentage < 25 || avgSaturation > 0.60) {
+    return { 
+      quality: "Not Cardamom", 
+      qualityScore: 0, 
+      isCardamom: false, 
+      featureAnalysis: { 
+        cardamomPercentage: parseFloat(cardamomPercentage.toFixed(2)),
+        avgSaturation: parseFloat(avgSaturation.toFixed(2)) 
+      } 
+    };
   }
 
   return { 

@@ -14,10 +14,10 @@ export const getTodayCardamomPrice = async () => {
   try {
     console.log("Connecting to website...");
 
-    // Add timeout and proper headers
+    // Add 5-second timeout so Vercel Serverless doesn't kill the function before it falls back to mock data
     const response = await axios.get(url, {
       headers,
-      timeout: 30000,
+      timeout: 5000, 
       maxRedirects: 5
     });
 
